@@ -1,0 +1,2 @@
+include ':autodao-sample', ':autodao-compiler', ':autodao-annotations', ':autodao'
+rootProject.name = 'autodao-parent'
