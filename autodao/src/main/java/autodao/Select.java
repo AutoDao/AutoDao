@@ -1,5 +1,6 @@
 package autodao;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -65,12 +66,26 @@ public class Select extends Operator{
 
     public <M extends Model> List<M> select(){
         if (this.clazz == null) throw new IllegalArgumentException("Must call from(Class clazz) method to set the Class");
+        if (queryColumns != null){
+            List<String> columnList = Arrays.asList(queryColumns);
+            if (!columnList.contains("_id")){
+                columnList.add("_id");
+                queryColumns = (String[]) columnList.toArray();
+            }
+        }
         return AutoDao.getInjector().select(distinct, clazz, queryColumns
                 , mWhere.toString(), getArgments(), groupBy, having, orderBy, limit);
     }
 
     public <M extends Model> M selectSingle(){
         if (this.clazz == null) throw new IllegalArgumentException("Must call from(Class clazz) method to set the Class");
+        if (queryColumns != null){
+            List<String> columnList = Arrays.asList(queryColumns);
+            if (!columnList.contains("_id")){
+                columnList.add("_id");
+                queryColumns = (String[]) columnList.toArray();
+            }
+        }
         return AutoDao.getInjector().selectSingle(distinct, clazz, queryColumns
                 , mWhere.toString(), getArgments(), groupBy, having, orderBy, limit);
     }

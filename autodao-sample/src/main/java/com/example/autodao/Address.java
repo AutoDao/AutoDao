@@ -19,7 +19,7 @@ public class Address extends Model{
 
     private String name;
 
-    @ForeignKey(referenceTableName = "user", referenceColumnName = "idCard", action = "ON UPDATE CASCADE")
+//    @ForeignKey(referenceTableName = "user", referenceColumnName = "idCard", action = "ON UPDATE CASCADE")
     private long userId;
 
     public void setName(String name) {

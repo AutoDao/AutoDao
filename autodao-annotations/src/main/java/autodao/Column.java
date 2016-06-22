@@ -48,5 +48,9 @@ public @interface Column {
      */
     boolean ignore() default false;
 
+    /**
+     * the mapping column name (another table column name)
+     * @return
+     */
     String mappingColumnName() default "";
 }

@@ -1,6 +1,7 @@
 package autodao.compiler;
 
 import android.support.annotation.NonNull;
+import android.text.*;
 
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.FieldSpec;
@@ -25,9 +26,12 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
 
         ClassName string = ClassName.get(String.class);
         ClassName modelDao = ClassName.get("autodao", "ModelDao");
+        ClassName serializer = ClassName.get("autodao", "TypeSerializer");
         ClassName hashMap = ClassName.get("java.util", "HashMap");
+
         TypeName hashMapOfDao = ParameterizedTypeName.get(hashMap, string, modelDao);
         TypeName hashMapOfTable = ParameterizedTypeName.get(hashMap, string, string);
+        TypeName hashMapOfSerializer = ParameterizedTypeName.get(hashMap, string, serializer);
 
         // select & selectSingle method
         TypeVariableName modelTypeVariableName = TypeVariableName.get("M extends autodao.Model");
@@ -36,6 +40,8 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
 
         FieldSpec daoMapFieldSpec = generateDaoMapField(hashMap, hashMapOfDao);
         FieldSpec tableFieldSpec = generateTableField(hashMap, hashMapOfTable);
+        FieldSpec serializerFieldSpec = generateSerializerMapField(hashMap, hashMapOfSerializer);
+
         MethodSpec.Builder flux = generateConstructorMethod(clazzElements);
         MethodSpec executePragma = generateExecutePragmaMethod();
         MethodSpec createTable = generateCreateTableMethod(clazzElements);
@@ -47,12 +53,14 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
         MethodSpec.Builder selectSingle = generateSelectSingleMethod(modelDao, modelTypeVariableName, modelTypeGenerics);
         MethodSpec.Builder getModelDao = generateGetModelDaoMethod(modelDao);
         MethodSpec.Builder getTableName = generateGetTableNameMethod();
+        MethodSpec.Builder getSerializer = generateGetSerializerMethod();
 
         TypeSpec.Builder typeSpecBuilder = TypeSpec.classBuilder(INJECTOR_NAME)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addSuperinterface(ClassName.get("autodao", "Injector"))
                 .addField(daoMapFieldSpec)
                 .addField(tableFieldSpec)
+                .addField(serializerFieldSpec)
                 .addMethod(flux.build())
                 .addMethod(save)
                 .addMethod(update)
@@ -63,7 +71,8 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
                 .addMethod(createTable)
                 .addMethod(createIndex)
                 .addMethod(getModelDao.build())
-                .addMethod(getTableName.build());
+                .addMethod(getTableName.build())
+                .addMethod(getSerializer.build());
 
         return JavaFile.builder(INJECTOR_PKG, typeSpecBuilder.build()).build();
     }
@@ -88,6 +97,16 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
                 .addParameter(String.class, "clazzName");
         getModelDaoBuilder.addStatement("return $L.get(clazzName)", INJECTOR_DAO_MAP_FIELD_NAME);
         return getModelDaoBuilder;
+    }
+
+    @NonNull
+    private MethodSpec.Builder generateGetSerializerMethod() {
+        MethodSpec.Builder getSerializerBuilder = MethodSpec.methodBuilder("getSerializer")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(ClassName.get("autodao", "TypeSerializer"))
+                .addParameter(String.class, "serializerCanonicalName");
+        getSerializerBuilder.addStatement("return $L.get(serializerCanonicalName)", INJECTOR_SERIALIZER_MAP_FIELD_NAME);
+        return getSerializerBuilder;
     }
 
     @NonNull
@@ -228,8 +247,25 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
         for (Map.Entry<String, ClazzElement> clazzElementEntry:clazzElements.entrySet()) {
             ClazzElement clazzElement = clazzElementEntry.getValue();
             ClassName daoClassName = ClassName.get(clazzElement.getPackageName(), clazzElement.getName()+TABLE_DAO_SUFFIX);
+            // dao map
             flux.addStatement("$L.put($S, new $T())", INJECTOR_DAO_MAP_FIELD_NAME, clazzElement.getPackageName()+"."+clazzElement.getName(), daoClassName);
+            // table map
             flux.addStatement("$L.put($S, $S)", INJECTOR_TABLE_MAP_FIELD_NAME, clazzElement.getPackageName()+"."+clazzElement.getName(), clazzElement.getTableName());
+            // serializer map
+            for (FieldElement fieldElement :
+                    clazzElement.getFieldElements()) {
+                if (fieldElement.getSerializer() != null){
+                    FieldElement.Serializer serializer = fieldElement.getSerializer();
+                    String serializedTypeCanonicalName = serializer.getSerializedTypeCanonicalName();
+                    String serializerCanonicalName = serializer.getSerializerCanonicalName();
+                    if (TextUtils.isEmpty(ColumnTypeUtils.getSQLiteColumnType(serializedTypeCanonicalName))){
+                        throw new IllegalArgumentException("serializedTypeCanonicalName is not the base type");
+                    }else if (TextUtils.isEmpty(serializerCanonicalName)){
+                        throw new IllegalArgumentException("serializerCanonicalName can not be empty");
+                    }
+                    flux.addStatement("$L.put($S, new $L())", INJECTOR_SERIALIZER_MAP_FIELD_NAME, serializerCanonicalName, serializerCanonicalName);
+                }
+            }
         }
         return flux;
     }
@@ -248,6 +284,14 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
                     .addModifiers(Modifier.PRIVATE)
                     .initializer("new $T()", hashMap)
                     .build();
+    }
+
+    @NonNull
+    private FieldSpec generateSerializerMapField(ClassName hashMap, TypeName hashMapOfDao) {
+        return FieldSpec.builder(hashMapOfDao, INJECTOR_SERIALIZER_MAP_FIELD_NAME)
+                .addModifiers(Modifier.PRIVATE)
+                .initializer("new $T()", hashMap)
+                .build();
     }
 
 }

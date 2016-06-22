@@ -19,4 +19,5 @@ public interface Injector {
     <M extends Model> M selectSingle(boolean distinct, Class clazz, String[] columns, String selection, String[] selectionArgs, String groupBy, String having, String orderBy, String limit);
     ModelDao getModelDao(String clazzName);
     String getTableName(String clazzName);
+    TypeSerializer getSerializer(String serializerCanonicalName);
 }

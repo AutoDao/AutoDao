@@ -11,7 +11,5 @@ import autodao.Table;
 public class Photo extends Model{
 
     public String desc;
-    @Column(name = "userId")
-    public User user;
 
 }

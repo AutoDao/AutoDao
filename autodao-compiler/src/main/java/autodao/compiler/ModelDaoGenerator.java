@@ -52,13 +52,8 @@ public class ModelDaoGenerator extends ClazzGenerator {
         MethodSpec.Builder selectBuilder = generateSelectMethod(clazzElements, clazzElement, objName, modelDao, model, sqlite, autodao, cursor, modelTypeVariableName, listTypeGenerics);
         MethodSpec.Builder selectSingleBuilder = generateSelectSingleMethod(clazzElements, clazzElement, objName, modelDao, model, sqlite, autodao, cursor, modelTypeVariableName, modelTypeGenerics);
 
-//        MethodSpec.Builder selectMappingBuilder = generateSelectMethod(clazzElements, clazzElement, objName, modelDao, model, sqlite, autodao, cursor, modelTypeVariableName, listTypeGenerics);
-//        MethodSpec.Builder selectSingleMappingBuilder = generateSelectSingleMethod(clazzElements, clazzElement, objName, modelDao, model, sqlite, autodao, cursor, modelTypeVariableName, modelTypeGenerics);
-
         typeSpecBuilder.addMethod(saveBuilder.build());
         typeSpecBuilder.addMethod(updateBuilder.build());
-//        typeSpecBuilder.addMethod(selectMappingBuilder.build());
-//        typeSpecBuilder.addMethod(selectSingleMappingBuilder.build());
         typeSpecBuilder.addMethod(selectBuilder.build());
         typeSpecBuilder.addMethod(selectSingleBuilder.build());
 
@@ -121,8 +116,6 @@ public class ModelDaoGenerator extends ClazzGenerator {
                 .addParameter(String.class, "having")
                 .addParameter(String.class, "orderBy")
                 .addParameter(String.class, "limit");
-//        if (isMapping)
-//            selectBuilder.addParameter(Object.class, "mappingObj");
         String objNameList = objName + "List";
         if (isCreateSelectMethod)
             selectBuilder.addStatement("$T<$T> $L = null", List.class, model, objNameList);
@@ -152,6 +145,11 @@ public class ModelDaoGenerator extends ClazzGenerator {
             String columnName = fieldElement.getColumnName();
             String fieldName = fieldElement.getName();
             String columnType = fieldElement.getType();
+
+            if ("_id".equals(columnName)){
+                selectBuilder.addStatement("$L.$L = cursor.$L(cursor.getColumnIndex($S))", objName, fieldName, ColumnTypeUtils.getSQLiteTypeMethod(columnType), columnName);
+                continue;
+            }
 
             // String name = cursor.getString(cursor.getColumnIndex("userName"));
             selectBuilder.beginControlFlow("if(targetColumns == null || targetColumns.contains($S))", columnName);
@@ -186,42 +184,45 @@ public class ModelDaoGenerator extends ClazzGenerator {
                                     , fe.getName()
                                     , ColumnTypeUtils.getSQLiteTypeMethod(fe.getType())
                                     , columnName);
-                            selectBuilder.addStatement("$T mappingSelectionArgs = new $T{$L}", String[].class, String[].class, fe.getName());
-//                            if (!isMapping){
-                                selectBuilder.addStatement("$L $L = modelDao.select(false, $S, null, $S, mappingSelectionArgs, null, null, null, null)"
-                                        , columnType
-                                        , fieldName
-                                        , mappingClazzElement.getTableName()
-                                        , fieldElement.getMappingColumnName()+"=?");
-                                generateSetFieldValueStatement(objName, selectBuilder, fieldElement, fieldName);
-//                            } else {
-//                                selectBuilder.beginControlFlow("if($L.getClass().getCanonicalName().equals($S))", "mappingObj", columnType);
-//                                if (fieldElement.getModifiers().contains(Modifier.PUBLIC)){
-//                                    selectBuilder.addStatement("$L.$L = ($L)$L", objName, fieldName, columnType, "mappingObj");
-//                                }else {
-//                                    String fieldSetName = buildAccessorName("set", fieldName);
-//                                    selectBuilder.addStatement("$L.$L($L)", objName, fieldSetName, fieldName);
-//                                }
-//                                selectBuilder.endControlFlow();
-//                                selectBuilder.beginControlFlow("else");
-//                                selectBuilder.addStatement("$L $L = modelDao.select(false, $S, null, $S, mappingSelectionArgs, null, null, null, null, ($T)$L)"
-//                                        , columnType
-//                                        , fieldName
-//                                        , mappingClazzElement.getTableName()
-//                                        , fieldElement.getMappingColumnName()+"=?"
-//                                        , Object.class
-//                                        , objName);
-//                                generateSetFieldValueStatement(objName, selectBuilder, fieldElement, fieldName);
-//                                selectBuilder.endControlFlow();
-//                            }
+                            selectBuilder.addStatement("$T $L = new $T{$L}", String[].class, "mappingSelectionArgs", String[].class, fe.getName());
 
+//                            selectBuilder.beginControlFlow("if($T.getModelList($S+$S+$L) == null)", autodao, mappingClazzElement.getTableName(), "@", fe.getName());
+                            selectBuilder.addStatement("$L $L = modelDao.select(false, $S, null, $S, mappingSelectionArgs, null, null, null, null)"
+                                    , columnType
+                                    , fieldName
+                                    , mappingClazzElement.getTableName()
+                                    , fieldElement.getMappingColumnName()+"=?");
+                            generateSetFieldValueStatement(objName, selectBuilder, fieldElement, fieldName);
+//                            selectBuilder.addStatement("$T.cacheModelList($S+$S+$L, $L)", autodao, mappingClazzElement.getTableName(), "@", fe.getName(), fieldName);
+//                            selectBuilder.endControlFlow();
+//                            selectBuilder.beginControlFlow("else");
+//                            if (fieldElement.getModifiers().contains(Modifier.PUBLIC)){
+//                                selectBuilder.addStatement("$L.$L = ($L)($T.getModelList($S+$S+$L))", objName, fieldName, columnType, autodao, mappingClazzElement.getTableName(), "@", fe.getName());
+//                            }else {
+//                                String fieldSetName = buildAccessorName("set", fieldName);
+//                                selectBuilder.addStatement("$L.$L(($L)($T.getModelList($S+$S+$L)))", objName, fieldSetName, columnType, autodao, mappingClazzElement.getTableName(), "@", fe.getName());
+//                            }
+//                            selectBuilder.endControlFlow();
                             break;
                         }
                     }
                 }else {
-                    throw new IllegalArgumentException("Must use generic type <"+generic+">");
+                    throw new IllegalArgumentException("The generic type must be Model");
                 }
-            }else if (ColumnTypeUtils.getSQLiteColumnType(columnType) == null){ // one to one
+            } else if (fieldElement.getSerializer() != null){ // serializer
+                String serializerCanonicalName = fieldElement.getSerializer().getSerializerCanonicalName();
+                String serializedTypeCanonicalName = fieldElement.getSerializer().getSerializedTypeCanonicalName();
+
+                selectBuilder.addStatement("$L $L = ($L)($T.getInjector().getSerializer($S).deserialize(cursor.$L(cursor.getColumnIndex($S))))"
+                        , columnType
+                        , fieldName
+                        , columnType
+                        , autodao
+                        , serializerCanonicalName
+                        , ColumnTypeUtils.getSQLiteTypeMethod(serializedTypeCanonicalName)
+                        , columnName);
+                generateSetFieldValueStatement(objName, selectBuilder, fieldElement, fieldName);
+            } else if (ColumnTypeUtils.getSQLiteColumnType(columnType) == null){ // one to one
 
                 selectBuilder.addStatement("$T modelDao = $T.getInjector().getModelDao($S)"
                         , modelDao
@@ -235,35 +236,24 @@ public class ModelDaoGenerator extends ClazzGenerator {
                         , long.class
                         , ColumnTypeUtils.getSQLiteTypeMethod("long")
                         , columnName);
-//                if (!isMapping){
-                    selectBuilder.addStatement("$L $L = modelDao.selectSingle(false, mappingTableName, null, $S, new $T[]{$T.valueOf(_id)}, null, null, null, null)"
-                            , columnType
-                            , fieldName
-                            , "_id=?"
-                            , String.class
-                            , String.class);
-                    generateSetFieldValueStatement(objName, selectBuilder, fieldElement, fieldName);
+//                selectBuilder.beginControlFlow("if($T.getModel($L+$S+$L) == null)", autodao, "mappingTableName", "@", "_id");
+                selectBuilder.addStatement("$L $L = modelDao.selectSingle(false, mappingTableName, null, $S, new $T[]{$T.valueOf(_id)}, null, null, null, null)"
+                        , columnType
+                        , fieldName
+                        , "_id=?"
+                        , String.class
+                        , String.class);
+                generateSetFieldValueStatement(objName, selectBuilder, fieldElement, fieldName);
+//                selectBuilder.addStatement("$T.cacheModel($L+$S+$L, $L)", autodao, "mappingTableName", "@", "_id", fieldName);
+//                selectBuilder.endControlFlow();
+//                selectBuilder.beginControlFlow("else");
+//                if (fieldElement.getModifiers().contains(Modifier.PUBLIC)){
+//                    selectBuilder.addStatement("$L.$L = ($L)($T.getModel($L+$S+$L))", objName, fieldName, columnType, autodao, "mappingTableName", "@", "_id");
 //                }else {
-//                    selectBuilder.beginControlFlow("if($L.getClass().getCanonicalName().equals($S))", "mappingObj", columnType);
-//                    if (fieldElement.getModifiers().contains(Modifier.PUBLIC)){
-//                        selectBuilder.addStatement("$L.$L = ($L)$L", objName, fieldName, columnType, "mappingObj");
-//                    }else {
-//                        String fieldSetName = buildAccessorName("set", fieldName);
-//                        selectBuilder.addStatement("$L.$L($L)", objName, fieldSetName, fieldName);
-//                    }
-//                    selectBuilder.endControlFlow();
-//                    selectBuilder.beginControlFlow("else");
-//                    selectBuilder.addStatement("$L $L = modelDao.selectSingle(false, mappingTableName, null, $S, new $T[]{$T.valueOf(_id)}, null, null, null, null, ($T)$L)"
-//                            , columnType
-//                            , fieldName
-//                            , "_id=?"
-//                            , String.class
-//                            , String.class
-//                            , Object.class
-//                            , objName);
-//                    generateSetFieldValueStatement(objName, selectBuilder, fieldElement, fieldName);
-//                    selectBuilder.endControlFlow();
+//                    String fieldSetName = buildAccessorName("set", fieldName);
+//                    selectBuilder.addStatement("$L.$L(($L)($T.getModel($L+$S+$L)))", objName, fieldSetName, columnType, autodao, "mappingTableName", "@", "_id");
 //                }
+//                selectBuilder.endControlFlow();
 
             }else {
                 selectBuilder.addStatement("$L $L = cursor.$L(cursor.getColumnIndex($S))"
@@ -327,7 +317,7 @@ public class ModelDaoGenerator extends ClazzGenerator {
         updateBuilder.addStatement("$T $L = ($T)obj", model, objName, model);
         updateBuilder.addStatement("$T db = $T.openDatabase()", sqlite, autodao);
         updateBuilder.addStatement("$T cv = new $T()", contentValues, contentValues);
-        genetateContentValues(clazzElements, clazzElement, objName, updateBuilder, true);
+        generateContentValues(clazzElements, clazzElement, objName, updateBuilder, true);
         updateBuilder.addStatement("affectedRows = db.update($S, cv, whereClause, whereArgs)", clazzElement.getTableName());
 
         updateBuilder.endControlFlow();
@@ -357,7 +347,7 @@ public class ModelDaoGenerator extends ClazzGenerator {
         saveBuilder.addStatement("$T $L = ($T)obj", model, objName, model);
         saveBuilder.addStatement("$T db = $T.openDatabase()", sqlite, autodao);
         saveBuilder.addStatement("$T cv = new $T()", contentValues, contentValues);
-        genetateContentValues(clazzElements, clazzElement, objName, saveBuilder, false);
+        generateContentValues(clazzElements, clazzElement, objName, saveBuilder, false);
         saveBuilder.addStatement("_id = db.insert($S, $L, cv)", clazzElement.getTableName(), null);
         saveBuilder.addStatement("$L._id = _id", objName);
 
@@ -373,7 +363,7 @@ public class ModelDaoGenerator extends ClazzGenerator {
         return saveBuilder;
     }
 
-    private void genetateContentValues(HashMap<String, ClazzElement> clazzElements, ClazzElement clazzElement, String objName, MethodSpec.Builder saveBuilder, boolean filterColumns) {
+    private void generateContentValues(HashMap<String, ClazzElement> clazzElements, ClazzElement clazzElement, String objName, MethodSpec.Builder saveBuilder, boolean filterColumns) {
 
         if(filterColumns){
             saveBuilder
@@ -423,44 +413,60 @@ public class ModelDaoGenerator extends ClazzGenerator {
                 saveBuilder.beginControlFlow("else")
                         .addStatement("cv.put($S, $L._id)", fieldElement.getColumnName(), fieldElement.getName())
                         .endControlFlow();
-            }else {
-                if (columnType.startsWith("java.util.List")
-                        || columnType.startsWith("java.util.ArrayList")){
-
-                    saveBuilder.addStatement("$L $L = $L.$L"
-                            , fieldElement.getType()
-                            , fieldElement.getName()
-                            , objName
-                            , fieldElement.getModifiers().contains(Modifier.PUBLIC)?fieldElement.getName():buildAccessorName("get", fieldElement.getName())+"()");
-                    FieldElement targetFieldElement = null;
-                    int start = columnType.indexOf("<");
-                    int end  = columnType.indexOf(">");
-                    String generic = columnType.substring(start+1, end);
-                    if (clazzElements.containsKey(generic)){
-                        for (FieldElement fe : clazzElements.get(generic).getFieldElements()) {
-                            if (fe.getColumnName().equals(fieldElement.getMappingColumnName())){
-                                targetFieldElement = fe;
-                                break;
-                            }
+            } else if (fieldElement.getSerializer() != null){
+                String serializerCanonicalName = fieldElement.getSerializer().getSerializerCanonicalName();
+                String serializedTypeCanonicalName = fieldElement.getSerializer().getSerializedTypeCanonicalName();
+                saveBuilder.addStatement("$L $L = ($L)($L.getSerializer($S))"
+                        , serializerCanonicalName
+                        , "serializer"
+                        , serializerCanonicalName
+                        , "autodao.AutoDao.getInjector()"
+                        , serializerCanonicalName);
+                saveBuilder.beginControlFlow("if(serializer == null)")
+                        .addStatement("throw new $T($S)", IllegalArgumentException.class, "Can't find "+serializerCanonicalName+" serializer")
+                        .endControlFlow();
+                saveBuilder.addStatement("$T serializedValue = serializer.serialize($L.$L)"
+                        , Object.class
+                        , objName
+                        , fieldElement.getModifiers().contains(Modifier.PUBLIC)?fieldElement.getName():buildAccessorName("boolean".endsWith(columnType)?"is":"get", fieldElement.getName())+"()");
+                saveBuilder.beginControlFlow("if(serializedValue != null)")
+                        .addStatement("cv.put($S, ($L)serializedValue)", fieldElement.getColumnName(), serializedTypeCanonicalName)
+                        .endControlFlow();
+            } else if (columnType.startsWith("java.util.List")
+                    || columnType.startsWith("java.util.ArrayList")){
+                saveBuilder.addStatement("$L $L = $L.$L"
+                        , fieldElement.getType()
+                        , fieldElement.getName()
+                        , objName
+                        , fieldElement.getModifiers().contains(Modifier.PUBLIC)?fieldElement.getName():buildAccessorName("get", fieldElement.getName())+"()");
+                FieldElement targetFieldElement = null;
+                int start = columnType.indexOf("<");
+                int end  = columnType.indexOf(">");
+                String generic = columnType.substring(start+1, end);
+                if (clazzElements.containsKey(generic)){
+                    for (FieldElement fe : clazzElements.get(generic).getFieldElements()) {
+                        if (fe.getColumnName().equals(fieldElement.getMappingColumnName())){
+                            targetFieldElement = fe;
+                            break;
                         }
-                    }else {
-                        throw new IllegalArgumentException("Must use generic type <"+generic+">");
                     }
-                    saveBuilder.beginControlFlow("if($L != null && $L.size() > 0)", fieldElement.getName(), fieldElement.getName())
-                            .addStatement("cv.put($S, $L.$L.get(0).$L)"
-                                    ,fieldElement.getColumnName()
-                                    ,objName
-                                    ,fieldElement.getModifiers().contains(Modifier.PUBLIC)?fieldElement.getName():buildAccessorName("get", fieldElement.getName())+"()"
-                                    ,targetFieldElement.getModifiers().contains(Modifier.PUBLIC)?targetFieldElement.getName():buildAccessorName("get", targetFieldElement.getName())+"()")
-                            .endControlFlow();
-                    saveBuilder.beginControlFlow("else")
-                            .addStatement("cv.put($S, $S)"
-                                    , fieldElement.getColumnName()
-                                    , "")
-                            .endControlFlow();
                 }else {
-                    throw new IllegalArgumentException("Not support type ("+columnType+") yet!!!");
+                    throw new IllegalArgumentException("The generic type must be Model");
                 }
+                saveBuilder.beginControlFlow("if($L != null && $L.size() > 0)", fieldElement.getName(), fieldElement.getName())
+                        .addStatement("cv.put($S, $L.$L.get(0).$L)"
+                                ,fieldElement.getColumnName()
+                                ,objName
+                                ,fieldElement.getModifiers().contains(Modifier.PUBLIC)?fieldElement.getName():buildAccessorName("get", fieldElement.getName())+"()"
+                                ,targetFieldElement.getModifiers().contains(Modifier.PUBLIC)?targetFieldElement.getName():buildAccessorName("get", targetFieldElement.getName())+"()")
+                        .endControlFlow();
+                saveBuilder.beginControlFlow("else")
+                        .addStatement("cv.put($S, $S)"
+                                , fieldElement.getColumnName()
+                                , "")
+                        .endControlFlow();
+            } else {
+                throw new IllegalArgumentException("Not support type ("+columnType+") yet!!!");
             }
         }else { // the base type
             saveBuilder.addStatement("cv.put($S, $L.$L)"

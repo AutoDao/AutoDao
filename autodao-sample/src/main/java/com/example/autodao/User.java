@@ -1,11 +1,13 @@
 package com.example.autodao;
 
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 import autodao.Column;
 import autodao.Index;
 import autodao.Model;
+import autodao.Serializer;
 import autodao.Table;
 
 /**
@@ -18,7 +20,7 @@ public class User extends Model{
     @Column(name = "userName", notNULL = true)
     private String name;
 
-    @Column(notNULL = true, defaultValue = "89900", check = "idCard>0", unique = true)
+    @Column(notNULL = true, defaultValue = "89900", check = "idCard>0", unique = false)
     private int idCard;
     private float vision;
     private long registTime;
@@ -30,6 +32,12 @@ public class User extends Model{
 
     @Column(name = "photoId")
     private Photo photo;
+
+    @Serializer(
+            serializerCanonicalName = "com.example.autodao.DateSerializer",
+            serializedTypeCanonicalName = "long"
+    )
+    public Date createTime;
 
     public String getName() {
         return name;

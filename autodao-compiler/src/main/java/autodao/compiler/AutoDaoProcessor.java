@@ -32,6 +32,7 @@ import javax.lang.model.util.Types;
 import autodao.Column;
 import autodao.ForeignKey;
 import autodao.Index;
+import autodao.Serializer;
 import autodao.Table;
 
 import static javax.tools.Diagnostic.Kind.ERROR;
@@ -297,7 +298,25 @@ public class AutoDaoProcessor extends AbstractProcessor{
                     }
                 }
                 fieldElement.setForeignKey(foreignKey);
-            }else {
+            }else if (Serializer.class.getCanonicalName().equals(annotationType)){
+                FieldElement.Serializer serializer = new FieldElement.Serializer();
+                Map<? extends ExecutableElement, ? extends AnnotationValue> foreignElementValues = annotationMirror.getElementValues();
+                for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry: foreignElementValues.entrySet()) {
+                    String key = entry.getKey().getSimpleName().toString();
+                    Object value = entry.getValue().getValue();
+                    if ("serializerCanonicalName".equals(key)){
+                        String serializerCanonicalName = String.valueOf(value);
+                        serializer.setSerializerCanonicalName(serializerCanonicalName);
+                    }else if ("serializedTypeCanonicalName".equals(key)){
+                        String serializedTypeCanonicalName = String.valueOf(value);
+                        serializer.setSerializedTypeCanonicalName(serializedTypeCanonicalName);
+                    }else {
+                        warning(member, key+" annotation not support yet");
+                    }
+                }
+                fieldElement.setSerializer(serializer);
+            }
+            else {
                 warning(member, annotationType+" annotation not support yet");
             }
         }

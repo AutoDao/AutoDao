@@ -18,6 +18,7 @@ public class FieldElement extends CommonElement{
     String defaultValue;
     String check;
     ForeignKey foreignKey;
+    Serializer serializer;
     String mappingColumnName;
 
     public FieldElement(Set<Modifier> modifiers, String type, String name) {
@@ -90,6 +91,14 @@ public class FieldElement extends CommonElement{
         return mappingColumnName;
     }
 
+    public void setSerializer(Serializer serializer) {
+        this.serializer = serializer;
+    }
+
+    public Serializer getSerializer() {
+        return serializer;
+    }
+
     public static class ForeignKey{
 
         private String referenceTableName;
@@ -118,6 +127,27 @@ public class FieldElement extends CommonElement{
 
         public void setReferenceTableName(String referenceTableName) {
             this.referenceTableName = referenceTableName;
+        }
+    }
+
+    public static class Serializer{
+        private String serializerCanonicalName;
+        private String serializedTypeCanonicalName;
+
+        public void setSerializedTypeCanonicalName(String serializedTypeCanonicalName) {
+            this.serializedTypeCanonicalName = serializedTypeCanonicalName;
+        }
+
+        public String getSerializedTypeCanonicalName() {
+            return serializedTypeCanonicalName;
+        }
+
+        public void setSerializerCanonicalName(String serializerCanonicalName) {
+            this.serializerCanonicalName = serializerCanonicalName;
+        }
+
+        public String getSerializerCanonicalName() {
+            return serializerCanonicalName;
         }
     }
 }

@@ -67,30 +67,30 @@ public class TableContractGenerator extends ClazzGenerator {
             if (TextUtils.isEmpty(baseColumnType)){ // not the base type
                 if (clazzElements.containsKey(columnElement.getType())){ // one to one
                     columnType = ColumnTypeUtils.INTEGER_TYPE;
-                }else {
-                    if (columnType.startsWith("java.util.List")
-                            || columnType.startsWith("java.util.ArrayList")){
-                        if (columnType.equals("java.util.List")
-                                || columnType.equals("java.util.ArrayList")){
-                            throw new IllegalArgumentException("Must use generic <Type>");
-                        }else {
-                            int start = columnType.indexOf("<");
-                            int end  = columnType.indexOf(">");
-                            String generic = columnType.substring(start+1, end);
-                            if (clazzElements.containsKey(generic)){
-                                for (FieldElement fe : clazzElements.get(generic).getFieldElements()) {
-                                    if (fe.getColumnName().equals(columnElement.getMappingColumnName())){
-                                        columnType = ColumnTypeUtils.getSQLiteColumnType(fe.getType());
-                                        break;
-                                    }
-                                }
-                            }else {
-                                throw new IllegalArgumentException("Must use generic type <"+generic+">");
-                            }
-                        }
+                }else if (columnElement.getSerializer() != null){ // serializer
+                    columnType = columnElement.getSerializer().getSerializedTypeCanonicalName();
+                }else if(columnType.startsWith("java.util.List")
+                        || columnType.startsWith("java.util.ArrayList")){
+                    if (columnType.equals("java.util.List")
+                            || columnType.equals("java.util.ArrayList")){
+                        throw new IllegalArgumentException("Must use generic <Type>");
                     }else {
-                        throw new IllegalArgumentException("Not support type ("+columnType+") yet!!!");
+                        int start = columnType.indexOf("<");
+                        int end  = columnType.indexOf(">");
+                        String generic = columnType.substring(start+1, end);
+                        if (clazzElements.containsKey(generic)){
+                            for (FieldElement fe : clazzElements.get(generic).getFieldElements()) {
+                                if (fe.getColumnName().equals(columnElement.getMappingColumnName())){
+                                    columnType = ColumnTypeUtils.getSQLiteColumnType(fe.getType());
+                                    break;
+                                }
+                            }
+                        }else {
+                            throw new IllegalArgumentException("The generic type must be Model");
+                        }
                     }
+                }else {
+                    throw new IllegalArgumentException("Not support type ("+columnType+") yet!!!");
                 }
             }else { // the base type
                 columnType = baseColumnType;

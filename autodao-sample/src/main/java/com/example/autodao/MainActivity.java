@@ -8,6 +8,7 @@ import android.util.Log;
 import com.alibaba.fastjson.JSON;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import autodao.AutoDao;
@@ -31,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
         user.setVision(5.0f);
         user.setRegistTime(System.currentTimeMillis());
         user.setLogined(true);
+//        user.createTime = new Date(System.currentTimeMillis());
         byte[] avatar = "哈哈".getBytes();
         user.setAvatar(avatar);
 
@@ -61,19 +63,21 @@ public class MainActivity extends AppCompatActivity {
         user.setVision(70.9f);
         user.setLogined(false);
         user.setIdCard(19120);
-        new Update(UserContract.USERNAME_COLUMN, UserContract.VISION_COLUMN, UserContract.IDCARD_COLUMN)
+        user.createTime = new Date(System.currentTimeMillis());
+
+        new Update(UserContract.USERNAME_COLUMN, UserContract.VISION_COLUMN, UserContract.IDCARD_COLUMN, UserContract.CREATETIME_COLUMN)
                 .from(User.class)
                 .where(UserContract.IDCARD_COLUMN+"=?", 1111)
                 .with(user)
                 .update();
 
-        List<User> users = new Select(UserContract.USERNAME_COLUMN, UserContract.IDCARD_COLUMN, UserContract.ADDRESSNAME_COLUMN)
+        List<User> users = new Select()
                 .from(User.class)
                 .where(UserContract.USERNAME_COLUMN+"=?", "涂冰冰")
                 .select();
         String usersJson = JSON.toJSONString(users);
         Log.e(TAG, usersJson);
-        User userObj = new Select(UserContract.USERNAME_COLUMN, UserContract.IDCARD_COLUMN)
+        User userObj = new Select(UserContract._ID_COLUMN, UserContract.USERNAME_COLUMN, UserContract.IDCARD_COLUMN)
                 .from(User.class)
                 .where(UserContract.USERNAME_COLUMN+"=?", "涂冰冰")
                 .selectSingle();
