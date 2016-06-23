@@ -6,6 +6,7 @@ import java.util.List;
 
 import autodao.Column;
 import autodao.Index;
+import autodao.Mapping;
 import autodao.Model;
 import autodao.Serializer;
 import autodao.Table;
@@ -27,7 +28,8 @@ public class User extends Model{
     private boolean logined;
     private byte[] avatar;
 
-    @Column(name = "addressName", mappingColumnName = "name")
+    @Column(name = "addressName")
+    @Mapping(name = "name")
     private List<Address> addresses;
 
     @Column(name = "photoId")

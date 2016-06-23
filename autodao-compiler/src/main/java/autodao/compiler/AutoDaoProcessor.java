@@ -32,6 +32,7 @@ import javax.lang.model.util.Types;
 import autodao.Column;
 import autodao.ForeignKey;
 import autodao.Index;
+import autodao.Mapping;
 import autodao.Serializer;
 import autodao.Table;
 
@@ -271,11 +272,18 @@ public class AutoDaoProcessor extends AbstractProcessor{
                     }else if ("check".equals(key)){
                         String check = String.valueOf(value);
                         fieldElement.setCheck(check);
-                    }else if ("mappingColumnName".equals(key)){
-                        String mappingColumnName = String.valueOf(value);
-                        fieldElement.setMappingColumnName(mappingColumnName);
                     }else {
                         warning(member, key+" annotation not support yet");
+                    }
+                }
+            }else if (Mapping.class.getCanonicalName().equals(annotationType)){
+                Map<? extends ExecutableElement, ? extends AnnotationValue> columnElementValues = annotationMirror.getElementValues();
+                for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry: columnElementValues.entrySet()) {
+                    String key = entry.getKey().getSimpleName().toString();
+                    Object value = entry.getValue().getValue();
+                    if ("name".equals(key)){
+                        String mappingColumnName = String.valueOf(value);
+                        fieldElement.setMappingColumnName(mappingColumnName);
                     }
                 }
             }else if (ForeignKey.class.getCanonicalName().equals(annotationType)){

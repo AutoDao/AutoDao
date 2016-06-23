@@ -166,6 +166,19 @@ public class ModelDaoGenerator extends ClazzGenerator {
                         , ColumnTypeUtils.getSQLiteTypeMethod(columnType)
                         , columnName);
                 generateSetFieldValueStatement(objName, selectBuilder, fieldElement, fieldName);
+            }else if (fieldElement.getSerializer() != null){ // serializer
+                String serializerCanonicalName = fieldElement.getSerializer().getSerializerCanonicalName();
+                String serializedTypeCanonicalName = fieldElement.getSerializer().getSerializedTypeCanonicalName();
+
+                selectBuilder.addStatement("$L $L = ($L)($T.getInjector().getSerializer($S).deserialize(cursor.$L(cursor.getColumnIndex($S))))"
+                        , columnType
+                        , fieldName
+                        , columnType
+                        , autodao
+                        , serializerCanonicalName
+                        , ColumnTypeUtils.getSQLiteTypeMethod(serializedTypeCanonicalName)
+                        , columnName);
+                generateSetFieldValueStatement(objName, selectBuilder, fieldElement, fieldName);
             }else if (columnType.startsWith("java.util.List")
                     || columnType.startsWith("java.util.ArrayList")){
                 int start = columnType.indexOf("<");
@@ -199,20 +212,7 @@ public class ModelDaoGenerator extends ClazzGenerator {
                 }else {
                     throw new IllegalArgumentException("The generic type must be Model");
                 }
-            } else if (fieldElement.getSerializer() != null){ // serializer
-                String serializerCanonicalName = fieldElement.getSerializer().getSerializerCanonicalName();
-                String serializedTypeCanonicalName = fieldElement.getSerializer().getSerializedTypeCanonicalName();
-
-                selectBuilder.addStatement("$L $L = ($L)($T.getInjector().getSerializer($S).deserialize(cursor.$L(cursor.getColumnIndex($S))))"
-                        , columnType
-                        , fieldName
-                        , columnType
-                        , autodao
-                        , serializerCanonicalName
-                        , ColumnTypeUtils.getSQLiteTypeMethod(serializedTypeCanonicalName)
-                        , columnName);
-                generateSetFieldValueStatement(objName, selectBuilder, fieldElement, fieldName);
-            } else if (ColumnTypeUtils.getSQLiteColumnType(columnType) == null){ // one to one
+            }else if (ColumnTypeUtils.getSQLiteColumnType(columnType) == null){ // one to one
 
                 selectBuilder.addStatement("$T modelDao = $T.getInjector().getModelDao($S)"
                         , modelDao

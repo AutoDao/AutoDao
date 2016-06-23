@@ -7,6 +7,7 @@ import android.util.Log;
 
 import com.alibaba.fastjson.JSON;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -14,6 +15,7 @@ import java.util.List;
 import autodao.AutoDao;
 import autodao.DatabaseManager;
 import autodao.Delete;
+import autodao.Insert;
 import autodao.Model;
 import autodao.Select;
 import autodao.Update;
@@ -42,14 +44,15 @@ public class MainActivity extends AppCompatActivity {
 
         Photo photo = new Photo();
         photo.desc = "最后的晚餐";
-        photo.save();
+        photo.path = new File(getCacheDir().getPath());
+        new Insert().from(Photo.class).with(photo).insert();
 
         user.setPhoto(photo);
         user.setAddresses(addresses);
-        user.save();
+        new Insert().from(User.class).with(user).insert();
 
         for (Address address:addresses)
-            address.save();
+            new Insert().from(Address.class).with(address).insert();
 
 //        new Delete().from(User.class).where("idCard=?", 1111).delete(); // foreign key failed
 //        Address.delete(Address.class, 1);
@@ -75,13 +78,13 @@ public class MainActivity extends AppCompatActivity {
                 .from(User.class)
                 .where(UserContract.USERNAME_COLUMN+"=?", "涂冰冰")
                 .select();
-        String usersJson = JSON.toJSONString(users);
-        Log.e(TAG, usersJson);
+//        String usersJson = JSON.toJSONString(users);
+//        Log.e(TAG, usersJson);
         User userObj = new Select(UserContract._ID_COLUMN, UserContract.USERNAME_COLUMN, UserContract.IDCARD_COLUMN)
                 .from(User.class)
                 .where(UserContract.USERNAME_COLUMN+"=?", "涂冰冰")
                 .selectSingle();
-        Log.e(TAG, JSON.toJSONString(userObj));
+//        Log.e(TAG, JSON.toJSONString(userObj));
     }
 
 }

@@ -1,7 +1,10 @@
 package com.example.autodao;
 
+import java.io.File;
+
 import autodao.Column;
 import autodao.Model;
+import autodao.Serializer;
 import autodao.Table;
 
 /**
@@ -11,5 +14,9 @@ import autodao.Table;
 public class Photo extends Model{
 
     public String desc;
+    @Serializer(
+            serializedTypeCanonicalName = "java.lang.String",
+            serializerCanonicalName = "com.example.autodao.FileSerializer")
+    public File path;
 
 }

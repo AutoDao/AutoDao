@@ -68,7 +68,7 @@ public class TableContractGenerator extends ClazzGenerator {
                 if (clazzElements.containsKey(columnElement.getType())){ // one to one
                     columnType = ColumnTypeUtils.INTEGER_TYPE;
                 }else if (columnElement.getSerializer() != null){ // serializer
-                    columnType = columnElement.getSerializer().getSerializedTypeCanonicalName();
+                    columnType = ColumnTypeUtils.getSQLiteColumnType(columnElement.getSerializer().getSerializedTypeCanonicalName());
                 }else if(columnType.startsWith("java.util.List")
                         || columnType.startsWith("java.util.ArrayList")){
                     if (columnType.equals("java.util.List")
