@@ -13,14 +13,16 @@ public class DatabaseManager {
     private AtomicInteger mOpenCounter = new AtomicInteger();
     private SQLiteDatabase mDatabase;
 
-    private DatabaseManager(){}
+    private DatabaseManager() {
 
-    public static void init(){
+    }
+
+    public static void init() {
         getInstance();
     }
 
-    static synchronized DatabaseManager getInstance(){
-        if(instance == null) instance = new DatabaseManager();
+    static synchronized DatabaseManager getInstance() {
+        if (instance == null) instance = new DatabaseManager();
         return instance;
     }
 

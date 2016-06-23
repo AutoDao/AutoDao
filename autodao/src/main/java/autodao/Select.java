@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * Created by tubingbing on 16/6/16.
  */
-public class Select extends Operator{
+public class Select extends Operator {
 
     String[] queryColumns;
     boolean distinct = false;
@@ -15,16 +15,16 @@ public class Select extends Operator{
     String orderBy;
     String limit;
 
-    public Select(){
+    public Select() {
         super();
     }
 
-    public Select(String...columns){
+    public Select(String...columns) {
         super();
         queryColumns = columns;
     }
 
-    public Select from(Class<? extends Model> clazz){
+    public Select from(Class<? extends Model> clazz) {
         fromArg(clazz);
         return this;
     }
@@ -39,36 +39,37 @@ public class Select extends Operator{
         return this;
     }
 
-    public Select distinct(){
+    public Select distinct() {
         distinct = true;
         return this;
     }
 
-    public Select groupBy(String groupBy){
+    public Select groupBy(String groupBy) {
         this.groupBy = groupBy;
         return this;
     }
 
-    public Select having(String having){
+    public Select having(String having) {
         this.having = having;
         return this;
     }
 
-    public Select orderBy(String orderBy){
+    public Select orderBy(String orderBy) {
         this.orderBy = orderBy;
         return this;
     }
 
-    public Select limit(String limit){
+    public Select limit(String limit) {
         this.limit = limit;
         return this;
     }
 
-    public <M extends Model> List<M> select(){
-        if (this.clazz == null) throw new IllegalArgumentException("Must call from(Class clazz) method to set the Class");
-        if (queryColumns != null){
+    public <M extends Model> List<M> select() {
+        if (this.clazz == null)
+            throw new IllegalArgumentException("Must call from(Class clazz) to set the Class");
+        if (queryColumns != null) {
             List<String> columnList = Arrays.asList(queryColumns);
-            if (!columnList.contains("_id")){
+            if (!columnList.contains("_id")) {
                 columnList.add("_id");
                 queryColumns = (String[]) columnList.toArray();
             }
@@ -77,11 +78,12 @@ public class Select extends Operator{
                 , mWhere.toString(), getArgments(), groupBy, having, orderBy, limit);
     }
 
-    public <M extends Model> M selectSingle(){
-        if (this.clazz == null) throw new IllegalArgumentException("Must call from(Class clazz) method to set the Class");
-        if (queryColumns != null){
+    public <M extends Model> M selectSingle() {
+        if (this.clazz == null)
+            throw new IllegalArgumentException("Must call from(Class clazz) to set the Class");
+        if (queryColumns != null) {
             List<String> columnList = Arrays.asList(queryColumns);
-            if (!columnList.contains("_id")){
+            if (!columnList.contains("_id")) {
                 columnList.add("_id");
                 queryColumns = (String[]) columnList.toArray();
             }

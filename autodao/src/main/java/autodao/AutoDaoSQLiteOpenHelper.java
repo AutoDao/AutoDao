@@ -7,9 +7,12 @@ import android.database.sqlite.SQLiteOpenHelper;
 /**
  * Created by tubingbing on 16/6/2.
  */
-public abstract class AutoDaoSQLiteOpenHelper extends SQLiteOpenHelper{
+public abstract class AutoDaoSQLiteOpenHelper extends SQLiteOpenHelper {
 
-    public AutoDaoSQLiteOpenHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version) {
+    public AutoDaoSQLiteOpenHelper(Context context,
+                                   String name,
+                                   SQLiteDatabase.CursorFactory factory,
+                                   int version) {
         super(context, name, factory, version);
     }
 

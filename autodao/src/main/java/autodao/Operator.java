@@ -12,11 +12,11 @@ public abstract class Operator {
     StringBuilder mWhere = new StringBuilder();
     List<Object> mArguments;
 
-    public Operator(){
+    public Operator() {
         mArguments = new ArrayList<>();
     }
 
-    void fromArg(Class clazz){
+    void fromArg(Class clazz) {
         this.clazz = clazz;
     }
 
@@ -34,7 +34,7 @@ public abstract class Operator {
     }
 
     void addArguments(Object[] args) {
-        for(Object arg : args) {
+        for (Object arg : args) {
             if (arg.getClass() == boolean.class || arg.getClass() == Boolean.class) {
                 arg = (arg.equals(true) ? 1 : 0);
             }
@@ -42,7 +42,7 @@ public abstract class Operator {
         }
     }
 
-    String[] getArgments(){
+    String[] getArgments() {
         String[] args = new String[mArguments.size()];
         for (int i = 0; i < mArguments.size(); i++) {
             args[i] = String.valueOf(mArguments.get(i));

@@ -19,25 +19,36 @@ public final class AutoDao {
     static LruCache<String, Model> sModels;
     static LruCache<String, List<? extends Model>> sModelLists;
 
-    public static void init(AutoDaoSQLiteOpenHelper helper){
+    private AutoDao() {
+
+    }
+
+    public static void init(AutoDaoSQLiteOpenHelper helper) {
         sqLiteOpenHelper = helper;
         sModels = new LruCache<>(2048);
         sModelLists = new LruCache<>(4096);
         DatabaseManager.init();
     }
 
-    static SQLiteOpenHelper getSQLiteOpenHelper(){
-        if (sqLiteOpenHelper == null) throw new IllegalArgumentException("SQLiteOpenHelper must init first!!!");
+    static SQLiteOpenHelper getSQLiteOpenHelper() {
+        if (sqLiteOpenHelper == null)
+            throw new IllegalArgumentException("SQLiteOpenHelper must init first!!!");
         return sqLiteOpenHelper;
     }
 
-    public static synchronized Injector getInjector(){
-        if (injector == null){
+    public static synchronized Injector getInjector() {
+        if (injector == null) {
             try {
-                Class injectorClzz = Class.forName(String.format("%s.%s", INJECTOR_PKG, INJECTOR_NAME));
+                Class injectorClzz = Class.forName(String.format("%s.%s"
+                        , INJECTOR_PKG, INJECTOR_NAME));
                 injector = (Injector) injectorClzz.newInstance();
             } catch (Exception e) {
-                throw new RuntimeException("Can't find " + String.format("%s.%s", INJECTOR_PKG, INJECTOR_NAME) + " class");
+                throw new RuntimeException(String.format(
+                        "%s %s.%s %s",
+                        "Can't find",
+                        INJECTOR_PKG,
+                        INJECTOR_NAME,
+                        "Class"));
             }
         }
         return injector;
@@ -51,15 +62,15 @@ public final class AutoDao {
         DatabaseManager.getInstance().closeDatabase();
     }
 
-    public static void beginTransaction(){
+    public static void beginTransaction() {
         openDatabase().beginTransaction();
     }
 
-    public static void setTransactionSuccessful(){
+    public static void setTransactionSuccessful() {
         openDatabase().setTransactionSuccessful();
     }
 
-    public static void endTransaction(){
+    public static void endTransaction() {
         openDatabase().endTransaction();
     }
 
@@ -67,19 +78,19 @@ public final class AutoDao {
         return openDatabase().inTransaction();
     }
 
-    public synchronized static void cacheModel(String key, Model model){
+    public synchronized static void cacheModel(String key, Model model) {
         sModels.put(key, model);
     }
 
-    public static Model getModel(String key){
+    public static Model getModel(String key) {
         return sModels.get(key);
     }
 
-    public synchronized static void cacheModelList(String key, List<? extends Model> modelList){
+    public synchronized static void cacheModelList(String key, List<? extends Model> modelList) {
         sModelLists.put(key, modelList);
     }
 
-    public static List<? extends Model> getModelList(String key){
+    public static List<? extends Model> getModelList(String key) {
         return sModelLists.get(key);
     }
 }

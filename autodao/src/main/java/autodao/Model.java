@@ -1,7 +1,5 @@
 package autodao;
 
-import android.util.Log;
-
 /**
  * Created by tubingbing on 16/6/2.
  */

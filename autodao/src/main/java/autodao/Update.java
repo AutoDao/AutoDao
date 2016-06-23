@@ -3,21 +3,21 @@ package autodao;
 /**
  * Created by tubingbing on 16/6/16.
  */
-public class Update extends Operator{
+public class Update extends Operator {
 
     Model model;
     String[] targetColumns;
 
-    public Update(){
+    public Update() {
         super();
     }
 
-    public Update(String...columns){
+    public Update(String...columns) {
         super();
         targetColumns = columns;
     }
 
-    public Update from(Class<? extends Model> clazz){
+    public Update from(Class<? extends Model> clazz) {
         fromArg(clazz);
         return this;
     }
@@ -32,15 +32,21 @@ public class Update extends Operator{
         return this;
     }
 
-    public Update with(Model model){
+    public Update with(Model model) {
         this.model = model;
         return this;
     }
 
-    public int update(){
-        if (this.clazz == null) throw new IllegalArgumentException("Must call from(Class clazz) method to set the Class");
-        if (this.model == null) throw new IllegalArgumentException("Must call with(Model model) method to set the Model");
-        return AutoDao.getInjector().update(clazz, model, mWhere.toString(), getArgments(), targetColumns);
+    public int update() {
+        if (this.clazz == null)
+            throw new IllegalArgumentException("Must call from(Class clazz) to set the Class");
+        if (this.model == null)
+            throw new IllegalArgumentException("Must call with(Model model) to set the Model");
+        return AutoDao.getInjector().update(clazz,
+                model,
+                mWhere.toString(),
+                getArgments(),
+                targetColumns);
     }
 
 }

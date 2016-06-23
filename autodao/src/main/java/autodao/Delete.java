@@ -3,9 +3,9 @@ package autodao;
 /**
  * Created by tubingbing on 16/6/15.
  */
-public class Delete extends Operator{
+public class Delete extends Operator {
 
-    public Delete from(Class<? extends Model> clazz){
+    public Delete from(Class<? extends Model> clazz) {
         fromArg(clazz);
         return this;
     }
@@ -20,8 +20,9 @@ public class Delete extends Operator{
         return this;
     }
 
-    public int delete(){
-        if (this.clazz == null) throw new IllegalArgumentException("Must call from(Class clazz) method to set the Class");
+    public int delete() {
+        if (this.clazz == null)
+            throw new IllegalArgumentException("Must call from(Class clazz) to set the Class");
         return AutoDao.getInjector().delete(clazz, mWhere.toString(), getArgments());
     }
 

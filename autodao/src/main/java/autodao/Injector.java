@@ -14,9 +14,29 @@ public interface Injector {
     void createIndex(SQLiteDatabase db);
     long save(Class clazz, Object obj);
     int delete(Class clazz, String whereClause, String[] whereArgs);
-    int update(Class clazz, Object obj, String whereClause, String[] whereArgs, String[] updateColumns);
-    <M extends Model> List<M> select(boolean distinct, Class clazz, String[] columns, String selection, String[] selectionArgs, String groupBy, String having, String orderBy, String limit);
-    <M extends Model> M selectSingle(boolean distinct, Class clazz, String[] columns, String selection, String[] selectionArgs, String groupBy, String having, String orderBy, String limit);
+    int update(Class clazz,
+               Object obj,
+               String whereClause,
+               String[] whereArgs,
+               String[] updateColumns);
+    <M extends Model> List<M> select(boolean distinct,
+                                     Class clazz,
+                                     String[] columns,
+                                     String selection,
+                                     String[] selectionArgs,
+                                     String groupBy,
+                                     String having,
+                                     String orderBy,
+                                     String limit);
+    <M extends Model> M selectSingle(boolean distinct,
+                                     Class clazz,
+                                     String[] columns,
+                                     String selection,
+                                     String[] selectionArgs,
+                                     String groupBy,
+                                     String having,
+                                     String orderBy,
+                                     String limit);
     ModelDao getModelDao(String clazzName);
     String getTableName(String clazzName);
     TypeSerializer getSerializer(String serializerCanonicalName);
