@@ -17,7 +17,7 @@ public class Update extends Operator{
         targetColumns = columns;
     }
 
-    public Update from(Class clazz){
+    public Update from(Class<? extends Model> clazz){
         fromArg(clazz);
         return this;
     }

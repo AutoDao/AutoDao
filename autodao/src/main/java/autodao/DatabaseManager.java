@@ -24,14 +24,14 @@ public class DatabaseManager {
         return instance;
     }
 
-    synchronized SQLiteDatabase openDatabase() {
+    SQLiteDatabase openDatabase() {
         if (mOpenCounter.incrementAndGet() == 1) {
             mDatabase = AutoDao.getSQLiteOpenHelper().getWritableDatabase();
         }
         return mDatabase;
     }
 
-    synchronized void closeDatabase() {
+    void closeDatabase() {
         if (mOpenCounter.decrementAndGet() == 0) {
             mDatabase.close();
         }

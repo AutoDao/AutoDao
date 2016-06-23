@@ -7,7 +7,7 @@ public class Insert extends Operator{
 
     Model model;
 
-    public Insert from(Class clazz){
+    public Insert from(Class<? extends Model> clazz){
         fromArg(clazz);
         return this;
     }

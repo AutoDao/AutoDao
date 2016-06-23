@@ -24,7 +24,7 @@ public class Select extends Operator{
         queryColumns = columns;
     }
 
-    public Select from(Class clazz){
+    public Select from(Class<? extends Model> clazz){
         fromArg(clazz);
         return this;
     }

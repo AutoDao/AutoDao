@@ -5,7 +5,7 @@ package autodao;
  */
 public class Delete extends Operator{
 
-    public Delete from(Class clazz){
+    public Delete from(Class<? extends Model> clazz){
         fromArg(clazz);
         return this;
     }
