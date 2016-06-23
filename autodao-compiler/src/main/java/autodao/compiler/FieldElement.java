@@ -1,7 +1,5 @@
 package autodao.compiler;
 
-import android.text.*;
-
 import java.util.Set;
 
 import javax.lang.model.element.Modifier;
@@ -9,7 +7,7 @@ import javax.lang.model.element.Modifier;
 /**
  * Created by tubingbing on 16/6/1.
  */
-public class FieldElement extends CommonElement{
+public class FieldElement extends CommonElement {
 
     String columnName = "";
     boolean unique = false;
@@ -99,7 +97,7 @@ public class FieldElement extends CommonElement{
         return serializer;
     }
 
-    public static class ForeignKey{
+    public static class ForeignKey {
 
         private String referenceTableName;
         private String referenceColumnName = "_id";
@@ -130,7 +128,7 @@ public class FieldElement extends CommonElement{
         }
     }
 
-    public static class Serializer{
+    public static class Serializer {
         private String serializerCanonicalName;
         private String serializedTypeCanonicalName;
 

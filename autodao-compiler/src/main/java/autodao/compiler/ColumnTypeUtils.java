@@ -12,7 +12,12 @@ public class ColumnTypeUtils {
     public static final String TEXT_TYPE = "TEXT";
     public static final String BLOB_TYPE = "BLOB";
 
-    private static final HashMap<String, String> SQLITE_TYPE_METHOD_MAP = new HashMap<String, String>() {
+    private ColumnTypeUtils() {
+
+    }
+
+    private static final HashMap<String, String> SQLITE_TYPE_METHOD_MAP =
+            new HashMap<String, String>() {
         {
             put("byte", "getInt");
             put("short", "getShort");
@@ -60,23 +65,23 @@ public class ColumnTypeUtils {
         }
     };
 
-    public static boolean isBoolean(String javaType){
+    public static boolean isBoolean(String javaType) {
         return "boolean".equals(javaType) || "java.lang.Boolean".equals(javaType);
     }
 
-    public static boolean isChar(String javaType){
+    public static boolean isChar(String javaType) {
         return "char".equals(javaType) || "java.lang.Character".equals(javaType);
     }
 
-    public static boolean isByte(String javaType){
+    public static boolean isByte(String javaType) {
         return "byte".equals(javaType) || "java.lang.Byte".equals(javaType);
     }
 
-    public static String getSQLiteColumnType(String javaType){
+    public static String getSQLiteColumnType(String javaType) {
         return BASE_TYPE_MAP.get(javaType);
     }
 
-    public static String getSQLiteTypeMethod(String javaType){
+    public static String getSQLiteTypeMethod(String javaType) {
         return SQLITE_TYPE_METHOD_MAP.get(javaType);
     }
 

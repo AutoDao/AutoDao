@@ -8,7 +8,7 @@ import javax.lang.model.element.Modifier;
 /**
  * Created by tubingbing on 16/6/3.
  */
-public class ClazzElement extends CommonElement{
+public class ClazzElement extends CommonElement {
 
     private String packageName;
     private String tableName;
@@ -51,7 +51,7 @@ public class ClazzElement extends CommonElement{
         return tableName;
     }
 
-    public static class Index{
+    public static class Index {
 
         private String name;
         private List<String> columns;

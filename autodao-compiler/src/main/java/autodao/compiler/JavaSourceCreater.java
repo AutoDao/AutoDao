@@ -13,17 +13,19 @@ public class JavaSourceCreater {
     ModelDaoGenerator modelDaoGenerator;
     AutoDaoInjectorGenerator autoDaoInjectorGenerator;
 
-    JavaSourceCreater(){
+    JavaSourceCreater() {
         tableContractGenerator = new TableContractGenerator();
         modelDaoGenerator = new ModelDaoGenerator();
         autoDaoInjectorGenerator = new AutoDaoInjectorGenerator();
     }
 
-    public JavaFile generateTableContractClass(HashMap<String, ClazzElement> clazzElements, ClazzElement clazzElement) {
+    public JavaFile generateTableContractClass(HashMap<String, ClazzElement> clazzElements,
+                                               ClazzElement clazzElement) {
         return tableContractGenerator.generateTableContractClass(clazzElements, clazzElement);
     }
 
-    public JavaFile generateTableDao(HashMap<String, ClazzElement> clazzElements, ClazzElement clazzElement) {
+    public JavaFile generateTableDao(HashMap<String, ClazzElement> clazzElements,
+                                     ClazzElement clazzElement) {
         return modelDaoGenerator.generateTableDao(clazzElements, clazzElement);
     }
 

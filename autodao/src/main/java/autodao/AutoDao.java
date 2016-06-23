@@ -2,9 +2,6 @@ package autodao;
 
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.support.v4.util.LruCache;
-
-import java.util.List;
 
 /**
  * Created by tubingbing on 16/6/2.
@@ -16,8 +13,6 @@ public final class AutoDao {
     private static Injector injector;
 
     static AutoDaoSQLiteOpenHelper sqLiteOpenHelper;
-    static LruCache<String, Model> sModels;
-    static LruCache<String, List<? extends Model>> sModelLists;
 
     private AutoDao() {
 
@@ -25,8 +20,6 @@ public final class AutoDao {
 
     public static void init(AutoDaoSQLiteOpenHelper helper) {
         sqLiteOpenHelper = helper;
-        sModels = new LruCache<>(2048);
-        sModelLists = new LruCache<>(4096);
         DatabaseManager.init();
     }
 
@@ -78,19 +71,4 @@ public final class AutoDao {
         return openDatabase().inTransaction();
     }
 
-    public synchronized static void cacheModel(String key, Model model) {
-        sModels.put(key, model);
-    }
-
-    public static Model getModel(String key) {
-        return sModels.get(key);
-    }
-
-    public synchronized static void cacheModelList(String key, List<? extends Model> modelList) {
-        sModelLists.put(key, modelList);
-    }
-
-    public static List<? extends Model> getModelList(String key) {
-        return sModelLists.get(key);
-    }
 }

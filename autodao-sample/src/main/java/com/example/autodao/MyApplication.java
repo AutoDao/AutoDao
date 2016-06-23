@@ -1,6 +1,7 @@
 package com.example.autodao;
 
 import android.app.Application;
+import android.util.Log;
 
 import autodao.AutoDao;
 

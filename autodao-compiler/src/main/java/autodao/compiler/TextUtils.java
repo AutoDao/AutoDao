@@ -5,12 +5,12 @@ package autodao.compiler;
  */
 public class TextUtils {
 
-    public static boolean isEmpty(CharSequence str) {
+    private TextUtils() {
 
-        if (str == null || str.length() == 0)
-            return true;
-        else
-            return false;
+    }
+
+    public static boolean isEmpty(CharSequence str) {
+        return str == null || str.length() == 0;
     }
 
     /**
@@ -21,7 +21,7 @@ public class TextUtils {
     public static String join(CharSequence delimiter, Object[] tokens) {
         StringBuilder sb = new StringBuilder();
         boolean firstTime = true;
-        for (Object token: tokens) {
+        for (Object token : tokens) {
             if (firstTime) {
                 firstTime = false;
             } else {
@@ -40,7 +40,7 @@ public class TextUtils {
     public static String join(CharSequence delimiter, Iterable tokens) {
         StringBuilder sb = new StringBuilder();
         boolean firstTime = true;
-        for (Object token: tokens) {
+        for (Object token : tokens) {
             if (firstTime) {
                 firstTime = false;
             } else {

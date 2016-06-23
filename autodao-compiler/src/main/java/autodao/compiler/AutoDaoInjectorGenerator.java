@@ -1,7 +1,6 @@
 package autodao.compiler;
 
 import android.support.annotation.NonNull;
-import android.text.*;
 
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.FieldSpec;
@@ -49,14 +48,18 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
         MethodSpec save = generateSaveMethod(modelDao);
         MethodSpec update = generateUpdateMethod(modelDao);
         MethodSpec delete = generateDeleteMethod();
-        MethodSpec.Builder select = generateSelectMethod(modelDao, modelTypeVariableName, listTypeGenerics);
-        MethodSpec.Builder selectSingle = generateSelectSingleMethod(modelDao, modelTypeVariableName, modelTypeGenerics);
+        MethodSpec.Builder select = generateSelectMethod(modelDao,
+                modelTypeVariableName,
+                listTypeGenerics);
+        MethodSpec.Builder selectSingle = generateSelectSingleMethod(modelDao,
+                modelTypeVariableName,
+                modelTypeGenerics);
         MethodSpec.Builder getModelDao = generateGetModelDaoMethod(modelDao);
         MethodSpec.Builder getTableName = generateGetTableNameMethod();
         MethodSpec.Builder getSerializer = generateGetSerializerMethod();
 
         TypeSpec.Builder typeSpecBuilder = TypeSpec.classBuilder(INJECTOR_NAME)
-                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .addModifiers(Modifier.PUBLIC)
                 .addSuperinterface(ClassName.get("autodao", "Injector"))
                 .addField(daoMapFieldSpec)
                 .addField(tableFieldSpec)
@@ -105,12 +108,15 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
                 .addModifiers(Modifier.PUBLIC)
                 .returns(ClassName.get("autodao", "TypeSerializer"))
                 .addParameter(String.class, "serializerCanonicalName");
-        getSerializerBuilder.addStatement("return $L.get(serializerCanonicalName)", INJECTOR_SERIALIZER_MAP_FIELD_NAME);
+        getSerializerBuilder.addStatement("return $L.get(serializerCanonicalName)",
+                INJECTOR_SERIALIZER_MAP_FIELD_NAME);
         return getSerializerBuilder;
     }
 
     @NonNull
-    private MethodSpec.Builder generateSelectSingleMethod(ClassName modelDao, TypeVariableName modelTypeVariableName, TypeVariableName modelTypeGenerics) {
+    private MethodSpec.Builder generateSelectSingleMethod(ClassName modelDao,
+                                                          TypeVariableName modelTypeVariableName,
+                                                          TypeVariableName modelTypeGenerics) {
         return MethodSpec.methodBuilder("selectSingle")
                     .addModifiers(Modifier.PUBLIC)
                     .addTypeVariable(modelTypeVariableName)
@@ -124,13 +130,23 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
                     .addParameter(String.class, "having")
                     .addParameter(String.class, "orderBy")
                     .addParameter(String.class, "limit")
-                    .addStatement("String table = $L.get(clazz.getCanonicalName())", INJECTOR_TABLE_MAP_FIELD_NAME)
-                    .addStatement("$T dao = $L.get(clazz.getCanonicalName())", modelDao, INJECTOR_DAO_MAP_FIELD_NAME)
-                    .addStatement("return dao.selectSingle(distinct, table, columns, selection, selectionArgs, groupBy, having, orderBy, limit)");
+                    .addStatement("String table = $L.get(clazz.getCanonicalName())",
+                            INJECTOR_TABLE_MAP_FIELD_NAME)
+                    .addStatement("$T dao = $L.get(clazz.getCanonicalName())",
+                            modelDao,
+                            INJECTOR_DAO_MAP_FIELD_NAME)
+                    .addStatement("return dao.selectSingle($L)", getSelectParams());
     }
 
     @NonNull
-    private MethodSpec.Builder generateSelectMethod(ClassName modelDao, TypeVariableName modelTypeVariableName, TypeVariableName listTypeGenerics) {
+    private String getSelectParams() {
+        return "distinct,table,columns,selection,selectionArgs,groupBy,having,orderBy,limit";
+    }
+
+    @NonNull
+    private MethodSpec.Builder generateSelectMethod(ClassName modelDao,
+                                                    TypeVariableName modelTypeVariableName,
+                                                    TypeVariableName listTypeGenerics) {
         return MethodSpec.methodBuilder("select")
                     .addModifiers(Modifier.PUBLIC)
                     .addTypeVariable(modelTypeVariableName)
@@ -144,9 +160,12 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
                     .addParameter(String.class, "having")
                     .addParameter(String.class, "orderBy")
                     .addParameter(String.class, "limit")
-                    .addStatement("String table = $L.get(clazz.getCanonicalName())", INJECTOR_TABLE_MAP_FIELD_NAME)
-                    .addStatement("$T dao = $L.get(clazz.getCanonicalName())", modelDao, INJECTOR_DAO_MAP_FIELD_NAME)
-                    .addStatement("return dao.select(distinct, table, columns, selection, selectionArgs, groupBy, having, orderBy, limit)");
+                    .addStatement("String table = $L.get(clazz.getCanonicalName())",
+                            INJECTOR_TABLE_MAP_FIELD_NAME)
+                    .addStatement("$T dao = $L.get(clazz.getCanonicalName())",
+                            modelDao,
+                            INJECTOR_DAO_MAP_FIELD_NAME)
+                    .addStatement("return dao.select($L)", getSelectParams());
     }
 
     @NonNull
@@ -159,8 +178,11 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
                 .addParameter(String.class, "whereClause")
                 .addParameter(String[].class, "whereArgs");
         ClassName autodao = ClassName.get("autodao", "AutoDao");
-        deleteBuilder.addStatement("String table = $L.get(clazz.getCanonicalName())", INJECTOR_TABLE_MAP_FIELD_NAME);
-        deleteBuilder.addStatement("int number = $T.openDatabase().delete(table, whereClause, whereArgs)", autodao);
+        deleteBuilder.addStatement("String table = $L.get(clazz.getCanonicalName())",
+                INJECTOR_TABLE_MAP_FIELD_NAME);
+        deleteBuilder.addStatement(
+                "int number = $T.openDatabase().delete(table, whereClause, whereArgs)",
+                autodao);
         deleteBuilder.addStatement("$T.closeDatabase()", autodao);
         deleteBuilder.addStatement("return number");
         return deleteBuilder.build();
@@ -177,7 +199,9 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
                 .addParameter(String.class, "whereClause")
                 .addParameter(String[].class, "whereArgs")
                 .addParameter(String[].class, "targetColumns");
-        updateBuilder.addStatement("$T dao = $L.get(clazz.getCanonicalName())", modelDao, INJECTOR_DAO_MAP_FIELD_NAME);
+        updateBuilder.addStatement("$T dao = $L.get(clazz.getCanonicalName())",
+                modelDao,
+                INJECTOR_DAO_MAP_FIELD_NAME);
         updateBuilder.addStatement("return dao.update(obj, whereClause, whereArgs, targetColumns)");
         return updateBuilder.build();
     }
@@ -190,7 +214,9 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
                 .returns(long.class)
                 .addParameter(Class.class, "clazz")
                 .addParameter(Object.class, "obj");
-        saveBuilder.addStatement("$T dao = $L.get(clazz.getCanonicalName())", modelDao, INJECTOR_DAO_MAP_FIELD_NAME);
+        saveBuilder.addStatement("$T dao = $L.get(clazz.getCanonicalName())",
+                modelDao,
+                INJECTOR_DAO_MAP_FIELD_NAME);
         saveBuilder.addStatement("return dao.save(obj)");
         return saveBuilder.build();
     }
@@ -201,12 +227,16 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
                 .addModifiers(Modifier.PUBLIC)
                 .returns(void.class)
                 .addParameter(ClassName.get("android.database.sqlite", "SQLiteDatabase"), "db");
-        for (Map.Entry<String, ClazzElement> clazzElementEntry:clazzElements.entrySet()) {
+        for (Map.Entry<String, ClazzElement> clazzElementEntry : clazzElements.entrySet()) {
             ClazzElement clazzElement = clazzElementEntry.getValue();
-            if (clazzElement.getIndices() != null && clazzElement.getIndices().size() > 0){
-                for (ClazzElement.Index index:clazzElement.getIndices()) {
-                    ClassName indexClassName = ClassName.get(clazzElement.getPackageName(), clazzElement.getName() + TABLE_CONTRACT_SUFFIX);
-                    createIndexBuilder.addStatement("db.execSQL($T."+getIndexFieldName(index.getName())+")", indexClassName);
+            if (clazzElement.getIndices() != null && clazzElement.getIndices().size() > 0) {
+                for (ClazzElement.Index index : clazzElement.getIndices()) {
+                    ClassName indexClassName = ClassName.get(clazzElement.getPackageName(),
+                            clazzElement.getName() + TABLE_CONTRACT_SUFFIX);
+                    createIndexBuilder.addStatement(
+                            "db.execSQL($T.$L)",
+                            indexClassName,
+                            getIndexFieldName(index.getName()));
                 }
             }
         }
@@ -220,10 +250,14 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
                 .returns(void.class)
                 .addParameter(ClassName.get("android.database.sqlite", "SQLiteDatabase"), "db");
 
-        for (Map.Entry<String, ClazzElement> clazzElementEntry:clazzElements.entrySet()) {
+        for (Map.Entry<String, ClazzElement> clazzElementEntry : clazzElements.entrySet()) {
             ClazzElement clazzElement = clazzElementEntry.getValue();
-            ClassName contract = ClassName.get(clazzElement.getPackageName(), clazzElement.getName() + TABLE_CONTRACT_SUFFIX);
-            createTableBuilder.addStatement("db.execSQL($T."+getCreateTableContractName()+")", contract);
+            ClassName contract = ClassName.get(clazzElement.getPackageName(),
+                    clazzElement.getName() + TABLE_CONTRACT_SUFFIX);
+            createTableBuilder.addStatement(
+                    "db.execSQL($T.$L)",
+                    contract,
+                    getCreateTableContractName());
         }
         return createTableBuilder.build();
     }
@@ -239,31 +273,41 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
     }
 
     @NonNull
-    private MethodSpec.Builder generateConstructorMethod(HashMap<String, ClazzElement> clazzElements) {
+    private MethodSpec.Builder generateConstructorMethod(
+            HashMap<String, ClazzElement> clazzElements) {
         // constructor method
         MethodSpec.Builder flux = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PUBLIC);
 
-        for (Map.Entry<String, ClazzElement> clazzElementEntry:clazzElements.entrySet()) {
+        for (Map.Entry<String, ClazzElement> clazzElementEntry : clazzElements.entrySet()) {
             ClazzElement clazzElement = clazzElementEntry.getValue();
-            ClassName daoClassName = ClassName.get(clazzElement.getPackageName(), clazzElement.getName()+TABLE_DAO_SUFFIX);
+            ClassName daoClassName = ClassName.get(clazzElement.getPackageName(),
+                    clazzElement.getName() + TABLE_DAO_SUFFIX);
             // dao map
-            flux.addStatement("$L.put($S, new $T())", INJECTOR_DAO_MAP_FIELD_NAME, clazzElement.getPackageName()+"."+clazzElement.getName(), daoClassName);
+            flux.addStatement("$L.put($S, new $T())",
+                    INJECTOR_DAO_MAP_FIELD_NAME,
+                    clazzElement.getPackageName() + "." + clazzElement.getName(),
+                    daoClassName);
             // table map
-            flux.addStatement("$L.put($S, $S)", INJECTOR_TABLE_MAP_FIELD_NAME, clazzElement.getPackageName()+"."+clazzElement.getName(), clazzElement.getTableName());
+            flux.addStatement("$L.put($S, $S)",
+                    INJECTOR_TABLE_MAP_FIELD_NAME,
+                    clazzElement.getPackageName() + "." + clazzElement.getName(),
+                    clazzElement.getTableName());
             // serializer map
-            for (FieldElement fieldElement :
-                    clazzElement.getFieldElements()) {
-                if (fieldElement.getSerializer() != null){
+            for (FieldElement fieldElement : clazzElement.getFieldElements()) {
+                if (fieldElement.getSerializer() != null) {
                     FieldElement.Serializer serializer = fieldElement.getSerializer();
-                    String serializedTypeCanonicalName = serializer.getSerializedTypeCanonicalName();
-                    String serializerCanonicalName = serializer.getSerializerCanonicalName();
-                    if (TextUtils.isEmpty(ColumnTypeUtils.getSQLiteColumnType(serializedTypeCanonicalName))){
-                        throw new IllegalArgumentException("serializedTypeCanonicalName is not the base type");
-                    }else if (TextUtils.isEmpty(serializerCanonicalName)){
-                        throw new IllegalArgumentException("serializerCanonicalName can not be empty");
+                    String serializedTypeCN = serializer.getSerializedTypeCanonicalName();
+                    String serializerCN = serializer.getSerializerCanonicalName();
+                    if (TextUtils.isEmpty(ColumnTypeUtils.getSQLiteColumnType(serializedTypeCN))) {
+                        throw new IllegalArgumentException("serializedTypeCN is not the base type");
+                    } else if (TextUtils.isEmpty(serializerCN)) {
+                        throw new IllegalArgumentException("serializerCN can not be empty");
                     }
-                    flux.addStatement("$L.put($S, new $L())", INJECTOR_SERIALIZER_MAP_FIELD_NAME, serializerCanonicalName, serializerCanonicalName);
+                    flux.addStatement("$L.put($S, new $L())",
+                            INJECTOR_SERIALIZER_MAP_FIELD_NAME,
+                            serializerCN,
+                            serializerCN);
                 }
             }
         }

@@ -15,7 +15,8 @@ import javax.lang.model.element.Modifier;
  */
 public class TableContractGenerator extends ClazzGenerator {
 
-    public JavaFile generateTableContractClass(HashMap<String, ClazzElement> clazzElements, ClazzElement clazzElement) {
+    public JavaFile generateTableContractClass(HashMap<String, ClazzElement> clazzElements,
+                                               ClazzElement clazzElement) {
         String clazzName = clazzElement.getName() + TABLE_CONTRACT_SUFFIX;
 
         TypeSpec.Builder typeSpecBuilder = TypeSpec.classBuilder(clazzName)
@@ -30,7 +31,8 @@ public class TableContractGenerator extends ClazzGenerator {
 
         // column field
         for (FieldElement fieldElement : clazzElement.getFieldElements()) {
-            FieldSpec fieldSpec = FieldSpec.builder(String.class, getFieldContractName(fieldElement.getColumnName()))
+            FieldSpec fieldSpec = FieldSpec.builder(String.class,
+                    getFieldContractName(fieldElement.getColumnName()))
                     .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
                     .initializer("$S", fieldElement.getColumnName())
                     .build();
@@ -45,8 +47,9 @@ public class TableContractGenerator extends ClazzGenerator {
         typeSpecBuilder.addField(createTableSqlSpec);
 
         List<ClazzElement.Index> indices = clazzElement.getIndices();
-        for (ClazzElement.Index index:indices) {
-            FieldSpec fieldSpec = FieldSpec.builder(String.class, getIndexFieldName(index.getName()))
+        for (ClazzElement.Index index : indices) {
+            FieldSpec fieldSpec = FieldSpec.builder(String.class,
+                    getIndexFieldName(index.getName()))
                     .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
                     .initializer("$S", createIndexSql(clazzElement.getTableName(), index))
                     .build();
@@ -56,46 +59,50 @@ public class TableContractGenerator extends ClazzGenerator {
         return JavaFile.builder(clazzElement.getPackageName(), typeSpecBuilder.build()).build();
     }
 
-    private String createTableSql(HashMap<String, ClazzElement> clazzElements, ClazzElement clazzElement) {
+    private String createTableSql(HashMap<String, ClazzElement> clazzElements,
+                                  ClazzElement clazzElement) {
         List<String> columnSqls = new ArrayList<>();
-        for (FieldElement columnElement:clazzElement.getFieldElements()) {
+        for (FieldElement columnElement : clazzElement.getFieldElements()) {
             StringBuilder columnSB = new StringBuilder();
             String columnName = columnElement.getColumnName();
             String columnType = columnElement.getType();
             String baseColumnType = ColumnTypeUtils.getSQLiteColumnType(columnType);
 
-            if (TextUtils.isEmpty(baseColumnType)){ // not the base type
-                if (clazzElements.containsKey(columnElement.getType())){ // one to one
+            if (TextUtils.isEmpty(baseColumnType)) { // not the base type
+                if (clazzElements.containsKey(columnElement.getType())) { // one to one
                     columnType = ColumnTypeUtils.INTEGER_TYPE;
-                }else if (columnElement.getSerializer() != null){ // serializer
-                    columnType = ColumnTypeUtils.getSQLiteColumnType(columnElement.getSerializer().getSerializedTypeCanonicalName());
-                }else if(columnType.startsWith("java.util.List")
-                        || columnType.startsWith("java.util.ArrayList")){
-                    if (columnType.equals("java.util.List")
-                            || columnType.equals("java.util.ArrayList")){
+                } else if (columnElement.getSerializer() != null) { // serializer
+                    columnType = ColumnTypeUtils.getSQLiteColumnType(
+                            columnElement.getSerializer().getSerializedTypeCanonicalName());
+                } else if (columnType.startsWith("java.util.List")
+                        || columnType.startsWith("java.util.ArrayList")) {
+                    if ("java.util.List".equals(columnType)
+                            || "java.util.ArrayList".equals(columnType)) {
                         throw new IllegalArgumentException("Must use generic <Type>");
-                    }else {
+                    } else {
                         int start = columnType.indexOf("<");
                         int end  = columnType.indexOf(">");
-                        String generic = columnType.substring(start+1, end);
-                        if (clazzElements.containsKey(generic)){
+                        String generic = columnType.substring(start + 1, end);
+                        if (clazzElements.containsKey(generic)) {
                             for (FieldElement fe : clazzElements.get(generic).getFieldElements()) {
-                                if (fe.getColumnName().equals(columnElement.getMappingColumnName())){
+                                if (fe.getColumnName()
+                                        .equals(columnElement.getMappingColumnName())) {
                                     columnType = ColumnTypeUtils.getSQLiteColumnType(fe.getType());
                                     break;
                                 }
                             }
-                        }else {
+                        } else {
                             throw new IllegalArgumentException("The generic type must be Model");
                         }
                     }
-                }else {
-                    throw new IllegalArgumentException("Not support type ("+columnType+") yet!!!");
+                } else {
+                    throw new IllegalArgumentException(
+                            String.format("Not support type (%s) yet!!!", columnType));
                 }
-            }else { // the base type
+            } else { // the base type
                 columnType = baseColumnType;
             }
-            if (!columnName.equals("_id")){
+            if (!"_id".equals(columnName)) {
                 columnSB.append(columnName)
                         .append(" ")
                         .append(columnType)
@@ -103,7 +110,7 @@ public class TableContractGenerator extends ClazzGenerator {
                         .append(getDefaultConstraint(columnElement))
                         .append(getCheckConstraint(columnElement))
                         .append(getUniqueConstraint(columnElement));
-            }else {
+            } else {
                 columnSB.append(columnName)
                         .append(" ")
                         .append(columnType)
@@ -112,7 +119,7 @@ public class TableContractGenerator extends ClazzGenerator {
             columnSqls.add(columnSB.toString());
         }
 
-        for (FieldElement columnElement:clazzElement.getFieldElements()) {
+        for (FieldElement columnElement : clazzElement.getFieldElements()) {
             FieldElement.ForeignKey foreignKey = columnElement.getForeignKey();
             if (foreignKey == null) continue;
             StringBuilder columnSB = new StringBuilder();
@@ -137,7 +144,7 @@ public class TableContractGenerator extends ClazzGenerator {
         return sb.toString();
     }
 
-    public String createIndexSql(String tableName, ClazzElement.Index index){
+    public String createIndexSql(String tableName, ClazzElement.Index index) {
         StringBuilder sb = new StringBuilder();
         sb.append("CREATE INDEX ")
                 .append(index.getName())
@@ -149,34 +156,34 @@ public class TableContractGenerator extends ClazzGenerator {
         return sb.toString();
     }
 
-    private String getUniqueConstraint(FieldElement columnElement){
-        if(columnElement.isUnique()) {
+    private String getUniqueConstraint(FieldElement columnElement) {
+        if (columnElement.isUnique()) {
             return " UNIQUE";
-        }else {
+        } else {
             return "";
         }
     }
 
-    private String getCheckConstraint(FieldElement columnElement){
-        if(!TextUtils.isEmpty(columnElement.getCheck())) {
-            return " CHECK("+columnElement.getCheck()+")";
-        }else {
+    private String getCheckConstraint(FieldElement columnElement) {
+        if (!TextUtils.isEmpty(columnElement.getCheck())) {
+            return " CHECK(" + columnElement.getCheck() + ")";
+        } else {
             return "";
         }
     }
 
-    private String getDefaultConstraint(FieldElement columnElement){
-        if(!TextUtils.isEmpty(columnElement.getDefaultValue())) {
-            return " default "+columnElement.getDefaultValue();
-        }else {
+    private String getDefaultConstraint(FieldElement columnElement) {
+        if (!TextUtils.isEmpty(columnElement.getDefaultValue())) {
+            return " default " + columnElement.getDefaultValue();
+        } else {
             return "";
         }
     }
 
-    private String getNotNULLConstraint(FieldElement columnElement){
-        if(columnElement.isNotNULL()) {
+    private String getNotNULLConstraint(FieldElement columnElement) {
+        if (columnElement.isNotNULL()) {
             return " NOT NULL";
-        }else {
+        } else {
             return "";
         }
     }

@@ -11,15 +11,6 @@ import autodao.TypeSerializer;
  * Created by tubingbing on 16/6/19.
  */
 public class ListStrSerializer extends TypeSerializer{
-    @Override
-    public Class<?> getDeserializedType() {
-        return List.class;
-    }
-
-    @Override
-    public Class<?> getSerializedType() {
-        return String.class;
-    }
 
     @Override
     public Object serialize(Object data) {

@@ -8,15 +8,6 @@ import autodao.TypeSerializer;
  * Created by tubingbing on 16/6/23.
  */
 public class FileSerializer extends TypeSerializer{
-    @Override
-    public Class<?> getDeserializedType() {
-        return File.class;
-    }
-
-    @Override
-    public Class<?> getSerializedType() {
-        return String.class;
-    }
 
     @Override
     public Object serialize(Object data) {

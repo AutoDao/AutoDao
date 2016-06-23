@@ -36,7 +36,8 @@ public abstract class Operator {
     void addArguments(Object[] args) {
         for (Object arg : args) {
             if (arg.getClass() == boolean.class || arg.getClass() == Boolean.class) {
-                arg = (arg.equals(true) ? 1 : 0);
+                boolean flag = (boolean) arg;
+                arg = flag ? 1 : 0;
             }
             mArguments.add(arg);
         }
