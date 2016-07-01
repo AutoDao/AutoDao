@@ -15,12 +15,12 @@ public class Select extends Operator {
     String orderBy;
     String limit;
 
-    public Select() {
-        super();
+    public Select(Injector injector) {
+        super(injector);
     }
 
-    public Select(String...columns) {
-        super();
+    public Select(Injector injector, String...columns) {
+        super(injector);
         queryColumns = columns;
     }
 
@@ -74,7 +74,7 @@ public class Select extends Operator {
                 queryColumns = (String[]) columnList.toArray();
             }
         }
-        return AutoDao.getInjector().select(distinct, clazz, queryColumns
+        return injector.select(distinct, clazz, queryColumns
                 , mWhere.toString(), getArgments(), groupBy, having, orderBy, limit);
     }
 
@@ -88,7 +88,7 @@ public class Select extends Operator {
                 queryColumns = (String[]) columnList.toArray();
             }
         }
-        return AutoDao.getInjector().selectSingle(distinct, clazz, queryColumns
+        return injector.selectSingle(distinct, clazz, queryColumns
                 , mWhere.toString(), getArgments(), groupBy, having, orderBy, limit);
     }
 }

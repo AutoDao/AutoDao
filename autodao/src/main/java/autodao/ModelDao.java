@@ -7,6 +7,7 @@ import java.util.List;
  */
 public interface ModelDao {
     long save(Object obj);
+    int delete(String table, String whereClause, String[] whereArgs);
     int update(Object obj, String whereClause, String[] whereArgs, String[] targetColumns);
     <M extends Model> List<M> select(boolean distinct,
                                      String table,

@@ -8,11 +8,14 @@ import java.util.List;
  */
 public abstract class Operator {
 
+    Injector injector;
     Class clazz;
     StringBuilder mWhere = new StringBuilder();
     List<Object> mArguments;
 
-    public Operator() {
+    public Operator(Injector injector) {
+        if (injector == null) throw new IllegalArgumentException("Injector can't be NULL");
+        this.injector = injector;
         mArguments = new ArrayList<>();
     }
 

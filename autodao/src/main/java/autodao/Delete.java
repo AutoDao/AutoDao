@@ -5,6 +5,10 @@ package autodao;
  */
 public class Delete extends Operator {
 
+    public Delete(Injector injector) {
+        super(injector);
+    }
+
     public Delete from(Class<? extends Model> clazz) {
         fromArg(clazz);
         return this;
@@ -23,7 +27,7 @@ public class Delete extends Operator {
     public int delete() {
         if (this.clazz == null)
             throw new IllegalArgumentException("Must call from(Class clazz) to set the Class");
-        return AutoDao.getInjector().delete(clazz, mWhere.toString(), getArgments());
+        return injector.delete(clazz, mWhere.toString(), getArgments());
     }
 
 }

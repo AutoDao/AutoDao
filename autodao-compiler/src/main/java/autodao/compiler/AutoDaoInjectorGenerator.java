@@ -21,7 +21,13 @@ import javax.lang.model.element.Modifier;
  */
 public class AutoDaoInjectorGenerator extends ClazzGenerator {
 
-    JavaFile generateAutoDaoInjector(HashMap<String, ClazzElement> clazzElements) {
+    HashMap<String, ClazzElement> clazzElements;
+
+    public AutoDaoInjectorGenerator(HashMap<String, ClazzElement> clazzElements) {
+        this.clazzElements = clazzElements;
+    }
+
+    JavaFile generateAutoDaoInjector() {
 
         ClassName string = ClassName.get(String.class);
         ClassName modelDao = ClassName.get("autodao", "ModelDao");
@@ -41,13 +47,10 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
         FieldSpec tableFieldSpec = generateTableField(hashMap, hashMapOfTable);
         FieldSpec serializerFieldSpec = generateSerializerMapField(hashMap, hashMapOfSerializer);
 
-        MethodSpec.Builder flux = generateConstructorMethod(clazzElements);
-        MethodSpec executePragma = generateExecutePragmaMethod();
-        MethodSpec createTable = generateCreateTableMethod(clazzElements);
-        MethodSpec createIndex = generateCreateIndexMethod(clazzElements);
+        MethodSpec.Builder flux = generateConstructorMethod();
         MethodSpec save = generateSaveMethod(modelDao);
         MethodSpec update = generateUpdateMethod(modelDao);
-        MethodSpec delete = generateDeleteMethod();
+        MethodSpec delete = generateDeleteMethod(modelDao);
         MethodSpec.Builder select = generateSelectMethod(modelDao,
                 modelTypeVariableName,
                 listTypeGenerics);
@@ -70,9 +73,6 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
                 .addMethod(delete)
                 .addMethod(select.build())
                 .addMethod(selectSingle.build())
-                .addMethod(executePragma)
-                .addMethod(createTable)
-                .addMethod(createIndex)
                 .addMethod(getModelDao.build())
                 .addMethod(getTableName.build())
                 .addMethod(getSerializer.build());
@@ -169,7 +169,7 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
     }
 
     @NonNull
-    private MethodSpec generateDeleteMethod() {
+    private MethodSpec generateDeleteMethod(ClassName modelDao) {
         // int delete(Class clazz, String whereClause, String[] whereArgs);
         MethodSpec.Builder deleteBuilder = MethodSpec.methodBuilder("delete")
                 .addModifiers(Modifier.PUBLIC)
@@ -177,14 +177,12 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
                 .addParameter(Class.class, "clazz")
                 .addParameter(String.class, "whereClause")
                 .addParameter(String[].class, "whereArgs");
-        ClassName autodao = ClassName.get("autodao", "AutoDao");
         deleteBuilder.addStatement("String table = $L.get(clazz.getCanonicalName())",
-                INJECTOR_TABLE_MAP_FIELD_NAME);
-        deleteBuilder.addStatement(
-                "int number = $T.openDatabase().delete(table, whereClause, whereArgs)",
-                autodao);
-        deleteBuilder.addStatement("$T.closeDatabase()", autodao);
-        deleteBuilder.addStatement("return number");
+                INJECTOR_TABLE_MAP_FIELD_NAME)
+                .addStatement("$T dao = $L.get(clazz.getCanonicalName())",
+                    modelDao,
+                    INJECTOR_DAO_MAP_FIELD_NAME)
+                .addStatement("return dao.delete(table, whereClause, whereArgs)");
         return deleteBuilder.build();
     }
 
@@ -222,69 +220,20 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
     }
 
     @NonNull
-    private MethodSpec generateCreateIndexMethod(HashMap<String, ClazzElement> clazzElements) {
-        MethodSpec.Builder createIndexBuilder = MethodSpec.methodBuilder("createIndex")
-                .addModifiers(Modifier.PUBLIC)
-                .returns(void.class)
-                .addParameter(ClassName.get("android.database.sqlite", "SQLiteDatabase"), "db");
-        for (Map.Entry<String, ClazzElement> clazzElementEntry : clazzElements.entrySet()) {
-            ClazzElement clazzElement = clazzElementEntry.getValue();
-            if (clazzElement.getIndices() != null && clazzElement.getIndices().size() > 0) {
-                for (ClazzElement.Index index : clazzElement.getIndices()) {
-                    ClassName indexClassName = ClassName.get(clazzElement.getPackageName(),
-                            clazzElement.getName() + TABLE_CONTRACT_SUFFIX);
-                    createIndexBuilder.addStatement(
-                            "db.execSQL($T.$L)",
-                            indexClassName,
-                            getIndexFieldName(index.getName()));
-                }
-            }
-        }
-        return createIndexBuilder.build();
-    }
+    private MethodSpec.Builder generateConstructorMethod() {
 
-    @NonNull
-    private MethodSpec generateCreateTableMethod(HashMap<String, ClazzElement> clazzElements) {
-        MethodSpec.Builder createTableBuilder = MethodSpec.methodBuilder("createTable")
-                .addModifiers(Modifier.PUBLIC)
-                .returns(void.class)
-                .addParameter(ClassName.get("android.database.sqlite", "SQLiteDatabase"), "db");
+        ClassName sqlite = ClassName.get("android.database.sqlite", "SQLiteDatabase");
 
-        for (Map.Entry<String, ClazzElement> clazzElementEntry : clazzElements.entrySet()) {
-            ClazzElement clazzElement = clazzElementEntry.getValue();
-            ClassName contract = ClassName.get(clazzElement.getPackageName(),
-                    clazzElement.getName() + TABLE_CONTRACT_SUFFIX);
-            createTableBuilder.addStatement(
-                    "db.execSQL($T.$L)",
-                    contract,
-                    getCreateTableContractName());
-        }
-        return createTableBuilder.build();
-    }
-
-    @NonNull
-    private MethodSpec generateExecutePragmaMethod() {
-        return MethodSpec.methodBuilder("executePragma")
-                    .addModifiers(Modifier.PUBLIC)
-                    .returns(void.class)
-                    .addParameter(ClassName.get("android.database.sqlite", "SQLiteDatabase"), "db")
-                    .addStatement("db.execSQL($S)", "PRAGMA foreign_keys = ON")
-                    .build();
-    }
-
-    @NonNull
-    private MethodSpec.Builder generateConstructorMethod(
-            HashMap<String, ClazzElement> clazzElements) {
-        // constructor method
         MethodSpec.Builder flux = MethodSpec.constructorBuilder()
-                .addModifiers(Modifier.PUBLIC);
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(sqlite, "db");
 
         for (Map.Entry<String, ClazzElement> clazzElementEntry : clazzElements.entrySet()) {
             ClazzElement clazzElement = clazzElementEntry.getValue();
             ClassName daoClassName = ClassName.get(clazzElement.getPackageName(),
                     clazzElement.getName() + TABLE_DAO_SUFFIX);
             // dao map
-            flux.addStatement("$L.put($S, new $T())",
+            flux.addStatement("$L.put($S, new $T(db, this))",
                     INJECTOR_DAO_MAP_FIELD_NAME,
                     clazzElement.getPackageName() + "." + clazzElement.getName(),
                     daoClassName);

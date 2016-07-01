@@ -49,7 +49,6 @@ public class AutoDaoProcessor extends AbstractProcessor {
     private Elements elementUtils;
     private Types typeUtils;
     private Filer filer;
-    private JavaSourceCreater javaGenerator;
 
     @Override
     public synchronized void init(ProcessingEnvironment env) {
@@ -58,7 +57,6 @@ public class AutoDaoProcessor extends AbstractProcessor {
         elementUtils = env.getElementUtils();
         typeUtils = env.getTypeUtils();
         filer = env.getFiler();
-        javaGenerator = new JavaSourceCreater();
     }
 
     @Override
@@ -108,29 +106,33 @@ public class AutoDaoProcessor extends AbstractProcessor {
             }
         }
 
-        for (Map.Entry<String, ClazzElement> clazzElementEntry : clazzElements.entrySet()) {
-            ClazzElement clazzElement = clazzElementEntry.getValue();
+        if (clazzElements.size() > 0) { // process method maybe call multi times
+
+            JavaSourceCreater javaGenerator = new JavaSourceCreater(clazzElements);
+
             try {
-                javaGenerator
-                        .generateTableContractClass(clazzElements, clazzElement)
-                        .writeTo(filer);
-                javaGenerator
-                        .generateTableDao(clazzElements, clazzElement)
-                        .writeTo(filer);
-            } catch (IOException e) {
-                error("Unable to write table contract for type "
-                        + clazzElement.getPackageName() + clazzElement.getName(),
-                        e.getMessage());
+                for (Map.Entry<String, ClazzElement> clazzElementEntry : clazzElements.entrySet()) {
+                    ClazzElement clazzElement = clazzElementEntry.getValue();
+                    javaGenerator.generateTableContractClass(clazzElement).writeTo(filer);
+                    javaGenerator.generateTableDao(clazzElement).writeTo(filer);
+                }
+            } catch (Exception e) {
+                error("Generate Table Contract OR Model DAO failure", e);
+            }
+
+            try {
+                javaGenerator.generateAutoDaoInjector().writeTo(filer);
+            } catch (Exception e) {
+                error("Generate AutoDaoInjector class failure", e);
+            }
+
+            try {
+                javaGenerator.generateOpenHelper().writeTo(filer);
+            } catch (Exception e) {
+                error("Generate SQLiteOpenHelper class failure", e);
             }
         }
-        try {
-            if (clazzElements.size() > 0)
-                javaGenerator
-                        .generateAutoDaoInjector(clazzElements)
-                        .writeTo(filer);
-        } catch (IOException e) {
-            error("Generate AutoDaoInjector class failure", e);
-        }
+
         return false;
     }
 
@@ -367,6 +369,8 @@ public class AutoDaoProcessor extends AbstractProcessor {
                         serializer.setSerializerCanonicalName(serializerCanonicalName);
                     } else if ("serializedTypeCanonicalName".equals(key)) {
                         String serializedTypeCanonicalName = String.valueOf(value);
+                        String mCT = ColumnTypeUtils.getSQLiteColumnType(serializedTypeCanonicalName);
+                        if (mCT == null) throw new IllegalArgumentException("Invalid serialized type");
                         serializer.setSerializedTypeCanonicalName(serializedTypeCanonicalName);
                     } else {
                         warning(member, key + " annotation not support yet");

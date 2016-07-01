@@ -7,6 +7,10 @@ public class Insert extends Operator {
 
     Model model;
 
+    public Insert(Injector injector) {
+        super(injector);
+    }
+
     public Insert from(Class<? extends Model> clazz) {
         fromArg(clazz);
         return this;
@@ -22,6 +26,6 @@ public class Insert extends Operator {
             throw new IllegalArgumentException("Must call from(Class clazz) to set the Class");
         if (this.model == null)
             throw new IllegalArgumentException("Must call with(Model model) to set the Model");
-        return AutoDao.getInjector().save(clazz, model);
+        return injector.save(clazz, model);
     }
 }

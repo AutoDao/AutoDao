@@ -4,19 +4,17 @@ import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
-import autodao.AutoDaoSQLiteOpenHelper;
+import autodao.AutoSQLiteOpenHelper;
 
 /**
  * Created by tubingbing on 16/6/8.
  */
-public class MySQLiteOpenHelper extends AutoDaoSQLiteOpenHelper{
+public class MySQLiteOpenHelper extends AutoSQLiteOpenHelper{
 
     static final String TAG = "autodao";
-    final static String DB_NAME = "test.db";
-    final static int DB_VERSION = 1;
 
-    public MySQLiteOpenHelper(Context context) {
-        super(context, DB_NAME, null, DB_VERSION);
+    public MySQLiteOpenHelper(Context context, String name, SQLiteDatabase.CursorFactory factory) {
+        super(context, name, factory);
         Log.d(TAG, "MySQLiteOpenHelper create...");
     }
 
@@ -25,4 +23,10 @@ public class MySQLiteOpenHelper extends AutoDaoSQLiteOpenHelper{
         super.onCreate(db);
         Log.d(TAG, "MySQLiteOpenHelper onCreate...");
     }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+
+    }
+
 }

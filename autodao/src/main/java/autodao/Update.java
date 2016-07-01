@@ -8,12 +8,12 @@ public class Update extends Operator {
     Model model;
     String[] targetColumns;
 
-    public Update() {
-        super();
+    public Update(Injector injector) {
+        super(injector);
     }
 
-    public Update(String...columns) {
-        super();
+    public Update(Injector injector, String...columns) {
+        super(injector);
         targetColumns = columns;
     }
 
@@ -42,7 +42,7 @@ public class Update extends Operator {
             throw new IllegalArgumentException("Must call from(Class clazz) to set the Class");
         if (this.model == null)
             throw new IllegalArgumentException("Must call with(Model model) to set the Model");
-        return AutoDao.getInjector().update(clazz,
+        return injector.update(clazz,
                 model,
                 mWhere.toString(),
                 getArgments(),

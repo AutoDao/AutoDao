@@ -1,12 +1,17 @@
 package autodao.compiler;
 
+import android.support.annotation.NonNull;
+
+import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
+import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.lang.model.element.Modifier;
 
@@ -15,8 +20,13 @@ import javax.lang.model.element.Modifier;
  */
 public class TableContractGenerator extends ClazzGenerator {
 
-    public JavaFile generateTableContractClass(HashMap<String, ClazzElement> clazzElements,
-                                               ClazzElement clazzElement) {
+    HashMap<String, ClazzElement> clazzElements;
+
+    public TableContractGenerator(HashMap<String, ClazzElement> clazzElements) {
+        this.clazzElements = clazzElements;
+    }
+
+    public JavaFile generateTableContractClass(ClazzElement clazzElement) {
         String clazzName = clazzElement.getName() + TABLE_CONTRACT_SUFFIX;
 
         TypeSpec.Builder typeSpecBuilder = TypeSpec.classBuilder(clazzName)
@@ -42,7 +52,7 @@ public class TableContractGenerator extends ClazzGenerator {
         // create table sql field
         FieldSpec createTableSqlSpec = FieldSpec.builder(String.class, getCreateTableContractName())
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-                .initializer("$S", createTableSql(clazzElements, clazzElement))
+                .initializer("$S", createTableSql(clazzElement))
                 .build();
         typeSpecBuilder.addField(createTableSqlSpec);
 
@@ -56,11 +66,14 @@ public class TableContractGenerator extends ClazzGenerator {
             typeSpecBuilder.addField(fieldSpec);
         }
 
+        typeSpecBuilder.addMethod(generateCreateTableMethod(clazzElement));
+        typeSpecBuilder.addMethod(generateCreateIndexMethod(clazzElement));
+        typeSpecBuilder.addMethod(generateDropTableMethod(clazzElement));
+
         return JavaFile.builder(clazzElement.getPackageName(), typeSpecBuilder.build()).build();
     }
 
-    private String createTableSql(HashMap<String, ClazzElement> clazzElements,
-                                  ClazzElement clazzElement) {
+    private String createTableSql(ClazzElement clazzElement) {
         List<String> columnSqls = new ArrayList<>();
         for (FieldElement columnElement : clazzElement.getFieldElements()) {
             StringBuilder columnSB = new StringBuilder();
@@ -92,7 +105,7 @@ public class TableContractGenerator extends ClazzGenerator {
                                 }
                             }
                         } else {
-                            throw new IllegalArgumentException("The generic type must be Model");
+                            throw new IllegalArgumentException(generic + " Model should be apply @Table annotation");
                         }
                     }
                 } else {
@@ -155,6 +168,53 @@ public class TableContractGenerator extends ClazzGenerator {
                 .append(")");
         return sb.toString();
     }
+
+    @NonNull
+    private MethodSpec generateDropTableMethod(ClazzElement clazzElement) {
+        MethodSpec.Builder dropTableBuilder = MethodSpec.methodBuilder("dropTable")
+                .addModifiers(Modifier.PUBLIC).addModifiers(Modifier.STATIC)
+                .returns(void.class)
+                .addParameter(ClassName.get("android.database.sqlite", "SQLiteDatabase"), "db");
+        dropTableBuilder.addStatement(
+                "db.execSQL($S)",
+                "DROP TABLE IF EXISTS " + clazzElement.getTableName());
+        return dropTableBuilder.build();
+    }
+
+    @NonNull
+    private MethodSpec generateCreateTableMethod(ClazzElement clazzElement) {
+        MethodSpec.Builder createTableBuilder = MethodSpec.methodBuilder("createTable")
+                .addModifiers(Modifier.PUBLIC).addModifiers(Modifier.STATIC)
+                .returns(void.class)
+                .addParameter(ClassName.get("android.database.sqlite", "SQLiteDatabase"), "db");
+        ClassName contract = ClassName.get(clazzElement.getPackageName(),
+                clazzElement.getName() + TABLE_CONTRACT_SUFFIX);
+        createTableBuilder.addStatement(
+                "db.execSQL($T.$L)",
+                contract,
+                getCreateTableContractName());
+        return createTableBuilder.build();
+    }
+
+    @NonNull
+    private MethodSpec generateCreateIndexMethod(ClazzElement clazzElement) {
+        MethodSpec.Builder createIndexBuilder = MethodSpec.methodBuilder("createIndex")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(void.class)
+                .addParameter(ClassName.get("android.database.sqlite", "SQLiteDatabase"), "db");
+        if (clazzElement.getIndices() != null && clazzElement.getIndices().size() > 0) {
+            for (ClazzElement.Index index : clazzElement.getIndices()) {
+                ClassName indexClassName = ClassName.get(clazzElement.getPackageName(),
+                        clazzElement.getName() + TABLE_CONTRACT_SUFFIX);
+                createIndexBuilder.addStatement(
+                        "db.execSQL($T.$L)",
+                        indexClassName,
+                        getIndexFieldName(index.getName()));
+            }
+        }
+        return createIndexBuilder.build();
+    }
+
 
     private String getUniqueConstraint(FieldElement columnElement) {
         if (columnElement.isUnique()) {
