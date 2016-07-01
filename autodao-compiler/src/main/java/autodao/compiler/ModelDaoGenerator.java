@@ -334,7 +334,6 @@ public class ModelDaoGenerator extends ClazzGenerator {
         selectBuilder.beginControlFlow("finally");
         // --------- finally block start -----------
         selectBuilder
-//                .addStatement("$T.closeDatabase()", autodao)
                 .beginControlFlow("if(cursor != null)")
                 .addStatement("cursor.close()")
                 .endControlFlow();
@@ -382,7 +381,6 @@ public class ModelDaoGenerator extends ClazzGenerator {
         updateBuilder.beginControlFlow("try");
 
         updateBuilder.addStatement("$T $L = ($T)obj", model, objName, model);
-//        updateBuilder.addStatement("$T db = $T.openDatabase()", sqlite, autodao);
         updateBuilder.addStatement("$T cv = new $T()", contentValues, contentValues);
         generateContentValues(clazzElement, objName, updateBuilder, true);
         updateBuilder.addStatement("affectedRows = db.update($S, cv, whereClause, whereArgs)", clazzElement.getTableName());
@@ -392,7 +390,6 @@ public class ModelDaoGenerator extends ClazzGenerator {
         updateBuilder.addStatement("throw e");
         updateBuilder.endControlFlow();
         updateBuilder.beginControlFlow("finally");
-//        updateBuilder.addStatement("$T.closeDatabase()", autodao);
         updateBuilder.endControlFlow();
 
         updateBuilder.addStatement("return affectedRows");
@@ -417,7 +414,6 @@ public class ModelDaoGenerator extends ClazzGenerator {
         saveBuilder.beginControlFlow("try");
 
         saveBuilder.addStatement("$T $L = ($T)obj", model, objName, model);
-//        saveBuilder.addStatement("$T db = $T.openDatabase()", sqlite, autodao);
         saveBuilder.addStatement("$T cv = new $T()", contentValues, contentValues);
         generateContentValues(clazzElement, objName, saveBuilder, false);
         saveBuilder.addStatement("_id = db.insert($S, $L, cv)", clazzElement.getTableName(), null);
@@ -428,7 +424,6 @@ public class ModelDaoGenerator extends ClazzGenerator {
         saveBuilder.addStatement("throw e");
         saveBuilder.endControlFlow();
         saveBuilder.beginControlFlow("finally");
-//        saveBuilder.addStatement("$T.closeDatabase()", autodao);
         saveBuilder.endControlFlow();
 
         saveBuilder.addStatement("return _id");

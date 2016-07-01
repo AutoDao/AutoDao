@@ -56,7 +56,8 @@ public class OpenHelperGenerator extends ClazzGenerator {
         MethodSpec.Builder onCreate = MethodSpec.methodBuilder("onCreate")
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(sqliteDatabaseClass, "db")
-                .addStatement("createAllTables(db)");
+                .addStatement("createAllTables(db)")
+                .addStatement("createAllIndices(db)");
 
         MethodSpec.Builder createAllTables = MethodSpec.methodBuilder("createAllTables")
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
@@ -69,11 +70,14 @@ public class OpenHelperGenerator extends ClazzGenerator {
             createAllTables.addStatement("$T.createTable(db)", contract);
         }
 
+        MethodSpec.Builder createAllIndices = MethodSpec.methodBuilder("createAllIndices")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter(sqliteDatabaseClass, "db");
         for (Map.Entry<String, ClazzElement> entry: clazzElements.entrySet()) {
             ClazzElement clazzElement = entry.getValue();
             ClassName contract = ClassName.get(clazzElement.getPackageName(),
                     clazzElement.getName() + ClazzGenerator.TABLE_CONTRACT_SUFFIX);
-            createAllTables.addStatement("$T.createIndex(db)", contract);
+            createAllIndices.addStatement("$T.createIndex(db)", contract);
         }
 
         MethodSpec.Builder dropAllTables = MethodSpec.methodBuilder("dropAllTables")
@@ -89,13 +93,9 @@ public class OpenHelperGenerator extends ClazzGenerator {
         //     if (injector == null) injector = new AutoDaoInjector(getWritableDatabase());
         MethodSpec.Builder getInjector = MethodSpec.methodBuilder("getInjector")
                 .addModifiers(Modifier.PUBLIC)
-                .addModifiers(Modifier.SYNCHRONIZED)
                 .addParameter(sqliteDatabaseClass, "db")
                 .returns(injectorClass)
-                .beginControlFlow("if (injector == null)")
-                .addStatement("injector = new $T(db)", autoDaoInjectorClass)
-                .endControlFlow()
-                .addStatement("return injector");
+                .addStatement("return new $T(db)", autoDaoInjectorClass);
 
         /**
          *
@@ -113,55 +113,15 @@ public class OpenHelperGenerator extends ClazzGenerator {
                 .addStatement("db.execSQL($S)", "PRAGMA foreign_keys=ON;")
                 .endControlFlow();
 
-        FieldSpec.Builder injectorField = FieldSpec.builder(injectorClass, "injector");
-        FieldSpec.Builder openCounterField = FieldSpec.builder(AtomicInteger.class, "mOpenCounter")
-                .initializer("new $T()", AtomicInteger.class);
-        FieldSpec.Builder databaseField = FieldSpec.builder(sqliteDatabaseClass, "mDatabase");
-
-        /**
-         *
-         * SQLiteDatabase openDatabase() {
-         if (mOpenCounter.incrementAndGet() == 1) {
-         mDatabase = AutoDao.getSQLiteOpenHelper().getWritableDatabase();
-         }
-         return mDatabase;
-         }
-
-         void closeDatabase() {
-         if (mOpenCounter.decrementAndGet() == 0) {
-         mDatabase.close();
-         }
-         }
-         *
-         */
-
-        MethodSpec.Builder openDatabase = MethodSpec.methodBuilder("openDatabase")
-                .addModifiers(Modifier.PUBLIC)
-                .returns(sqliteDatabaseClass)
-                .beginControlFlow("if (mOpenCounter.incrementAndGet() == 1) ")
-                .addStatement("mDatabase = getWritableDatabase()")
-                .endControlFlow()
-                .addStatement("return mDatabase");
-
-        MethodSpec.Builder closeDatabase = MethodSpec.methodBuilder("closeDatabase")
-                .addModifiers(Modifier.PUBLIC)
-                .beginControlFlow("if (mOpenCounter.decrementAndGet() == 0) ")
-                .addStatement("mDatabase.close()")
-                .endControlFlow();
-
         typeSpecBuilder
-                .addField(databaseField.build())
-                .addField(openCounterField.build())
-                .addField(injectorField.build())
                 .addMethod(constructor.build())
                 .addMethod(constructorWithVersion.build())
                 .addMethod(onCreate.build())
                 .addMethod(createAllTables.build())
+                .addMethod(createAllIndices.build())
                 .addMethod(dropAllTables.build())
                 .addMethod(getInjector.build())
-                .addMethod(onOpen.build())
-                .addMethod(openDatabase.build())
-                .addMethod(closeDatabase.build());
+                .addMethod(onOpen.build());
 
         return JavaFile.builder("autodao", typeSpecBuilder.build()).build();
     }

@@ -1,5 +1,6 @@
 package com.example.autodao;
 
+import android.database.sqlite.SQLiteDatabase;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 
@@ -24,8 +25,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         /** database1 */
-        AutoSQLiteOpenHelper helper = new MySQLiteOpenHelper(this, "autodao.db", null);
-        Injector injector = helper.getInjector(helper.openDatabase());
+        AutoSQLiteOpenHelper helper = new MySQLiteOpenHelper(this, "autodao.db", null, 2);
+        SQLiteDatabase db = helper.getWritableDatabase();
+        Injector injector = helper.getInjector(db);
 
         User user = new User();
         user.setName("tubb");
@@ -77,15 +79,16 @@ public class MainActivity extends AppCompatActivity {
                 .where(UserContract.USERNAME_COLUMN+"=?", "涂冰冰")
                 .selectSingle();
 
-        helper.closeDatabase();
+        db.close();
 
         /** database2 */
         AutoSQLiteOpenHelper helperS = new MySQLiteOpenHelper(this, "autodao2.db", null);
-        Injector injectorS = helperS.getInjector(helperS.openDatabase());
+        SQLiteDatabase dbS = helperS.getWritableDatabase();
+        Injector injectorS = helperS.getInjector(dbS);
         Photo photo2 = new Photo();
         photo2.desc = "最后的xx";
         photo2.path = new File(getCacheDir().getPath());
         new Insert(injectorS).from(Photo.class).with(photo2).insert();
-        helperS.closeDatabase();
+        dbS.close();
     }
 }

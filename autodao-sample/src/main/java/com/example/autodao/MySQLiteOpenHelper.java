@@ -18,6 +18,11 @@ public class MySQLiteOpenHelper extends AutoSQLiteOpenHelper{
         Log.d(TAG, "MySQLiteOpenHelper create...");
     }
 
+    public MySQLiteOpenHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version) {
+        super(context, name, factory, version);
+        Log.d(TAG, "MySQLiteOpenHelper create...");
+    }
+
     @Override
     public void onCreate(SQLiteDatabase db) {
         super.onCreate(db);
