@@ -33,7 +33,7 @@ public class ModelDaoGenerator extends ClazzGenerator {
 
         ClassName modelDao = ClassName.get("autodao", "ModelDao");
         TypeSpec.Builder typeSpecBuilder = TypeSpec.classBuilder(clazzName)
-                .addModifiers(Modifier.PUBLIC)
+                .addModifiers(Modifier.PUBLIC).addModifiers(Modifier.FINAL)
                 .addSuperinterface(modelDao);
 
         ClassName model = ClassName.get(clazzElement.getPackageName(), modelName);
@@ -145,12 +145,12 @@ public class ModelDaoGenerator extends ClazzGenerator {
 
     @NonNull
     private MethodSpec.Builder generateSqlSelectMethod(ClazzElement clazzElement,
-                                                    String objName,
-                                                    ClassName modelDao,
-                                                    ClassName model,
-                                                    ClassName cursor,
-                                                    TypeVariableName modelTypeVariableName,
-                                                    TypeVariableName listTypeGenerics) {
+                                                       String objName,
+                                                       ClassName modelDao,
+                                                       ClassName model,
+                                                       ClassName cursor,
+                                                       TypeVariableName modelTypeVariableName,
+                                                       TypeVariableName listTypeGenerics) {
 
         return generateSqlSelectOrSelectSingleMethod(clazzElement,
                 objName,
@@ -164,13 +164,13 @@ public class ModelDaoGenerator extends ClazzGenerator {
 
     @NonNull
     private MethodSpec.Builder generateSqlSelectOrSelectSingleMethod(ClazzElement clazzElement,
-                                                                  String objName,
-                                                                  ClassName modelDao,
-                                                                  ClassName model,
-                                                                  ClassName cursor,
-                                                                  TypeVariableName modelTypeVariableName,
-                                                                  TypeVariableName returnType,
-                                                                  boolean isCreateSelectMethod) {
+                                                                     String objName,
+                                                                     ClassName modelDao,
+                                                                     ClassName model,
+                                                                     ClassName cursor,
+                                                                     TypeVariableName modelTypeVariableName,
+                                                                     TypeVariableName returnType,
+                                                                     boolean isCreateSelectMethod) {
 
         ClassName operatorClass = ClassName.get("autodao", "Operator");
         MethodSpec.Builder selectBuilder = MethodSpec
@@ -205,7 +205,7 @@ public class ModelDaoGenerator extends ClazzGenerator {
             String fieldName = fieldElement.getName();
             String columnType = fieldElement.getType();
 
-            if ("_id".equals(columnName)){
+            if ("_id".equals(columnName)) {
                 selectBuilder.addStatement("$L.$L = cursor.$L(cursor.getColumnIndex($S))",
                         objName,
                         fieldName,
@@ -240,15 +240,15 @@ public class ModelDaoGenerator extends ClazzGenerator {
                         ColumnTypeUtils.getSQLiteTypeMethod(serializedTypeCanonicalName),
                         columnName);
                 generateSetFieldValueStatement(objName, selectBuilder, fieldElement, fieldName);
-            }else if (columnType.startsWith("java.util.List")
-                    || columnType.startsWith("java.util.ArrayList")){
+            } else if (columnType.startsWith("java.util.List")
+                    || columnType.startsWith("java.util.ArrayList")) {
                 int start = columnType.indexOf("<");
-                int end  = columnType.indexOf(">");
-                String generic = columnType.substring(start+1, end);
+                int end = columnType.indexOf(">");
+                String generic = columnType.substring(start + 1, end);
                 // one to many
-                if (clazzElements.containsKey(generic)){
+                if (clazzElements.containsKey(generic)) {
                     for (FieldElement fe : clazzElements.get(generic).getFieldElements()) {
-                        if (fe.getColumnName().equals(fieldElement.getMappingColumnName())){
+                        if (fe.getColumnName().equals(fieldElement.getMappingColumnName())) {
                             ClazzElement mappingClazzElement = clazzElements.get(generic);
                             String mappingCN = mappingClazzElement.getPackageName() + "." + mappingClazzElement.getName();
                             selectBuilder.addStatement("$T modelDao = injector.getModelDao($S)",
@@ -298,7 +298,7 @@ public class ModelDaoGenerator extends ClazzGenerator {
                         "_id=?",
                         "_id");
                 generateSetFieldValueStatement(objName, selectBuilder, fieldElement, fieldName);
-            }else {
+            } else {
                 selectBuilder.addStatement("$L $L = cursor.$L(cursor.getColumnIndex($S))"
                         , columnType, fieldName
                         , ColumnTypeUtils.getSQLiteTypeMethod(columnType)
@@ -349,9 +349,9 @@ public class ModelDaoGenerator extends ClazzGenerator {
 
     @NonNull
     private MethodSpec.Builder generateSqlUpdateMethod(ClazzElement clazzElement,
-                                                    String objName,
-                                                    ClassName model,
-                                                    ClassName contentValues) {
+                                                       String objName,
+                                                       ClassName model,
+                                                       ClassName contentValues) {
         ClassName statementClass = ClassName.get("android.database.sqlite", "SQLiteStatement");
         ClassName operatorClass = ClassName.get("autodao", "Operator");
 
@@ -393,9 +393,9 @@ public class ModelDaoGenerator extends ClazzGenerator {
 
     @NonNull
     private MethodSpec.Builder generateSqlSaveMethod(ClazzElement clazzElement,
-                                                       String objName,
-                                                       ClassName model,
-                                                       ClassName contentValues) {
+                                                     String objName,
+                                                     ClassName model,
+                                                     ClassName contentValues) {
         ClassName statementClass = ClassName.get("android.database.sqlite", "SQLiteStatement");
         ClassName operatorClass = ClassName.get("autodao", "Operator");
 
@@ -452,7 +452,7 @@ public class ModelDaoGenerator extends ClazzGenerator {
                     .endControlFlow();
         }
 
-        for (FieldElement fieldElement:clazzElement.getFieldElements()) {
+        for (FieldElement fieldElement : clazzElement.getFieldElements()) {
 
             if ("_id".equals(fieldElement.getName())) continue;
 
@@ -496,7 +496,7 @@ public class ModelDaoGenerator extends ClazzGenerator {
                                 fieldElement.getColumnName(),
                                 fieldElement.getName())
                         .endControlFlow();
-            } else if (fieldElement.getSerializer() != null){
+            } else if (fieldElement.getSerializer() != null) {
                 String serializerCanonicalName = fieldElement
                         .getSerializer()
                         .getSerializerCanonicalName();
@@ -509,28 +509,28 @@ public class ModelDaoGenerator extends ClazzGenerator {
                         , serializerCanonicalName
                         , serializerCanonicalName);
                 saveBuilder.beginControlFlow("if(serializer == null)")
-                        .addStatement("throw new $T($S)", IllegalArgumentException.class, "Can't find "+serializerCanonicalName+" serializer")
+                        .addStatement("throw new $T($S)", IllegalArgumentException.class, "Can't find " + serializerCanonicalName + " serializer")
                         .endControlFlow();
                 saveBuilder.addStatement("$T serializedValue = serializer.serialize($L.$L)"
                         , Object.class
                         , objName
-                        , fieldElement.getModifiers().contains(Modifier.PUBLIC) ? fieldElement.getName() : buildAccessorName("boolean".endsWith(columnType) ? "is" : "get", fieldElement.getName())+"()");
+                        , fieldElement.getModifiers().contains(Modifier.PUBLIC) ? fieldElement.getName() : buildAccessorName("boolean".endsWith(columnType) ? "is" : "get", fieldElement.getName()) + "()");
                 saveBuilder.beginControlFlow("if(serializedValue != null)")
                         .addStatement("cv.put($S, ($L)serializedValue)", fieldElement.getColumnName(), serializedTypeCanonicalName)
                         .endControlFlow();
             } else if (columnType.startsWith("java.util.List")
-                    || columnType.startsWith("java.util.ArrayList")){
+                    || columnType.startsWith("java.util.ArrayList")) {
                 saveBuilder.addStatement("$L $L = $L.$L"
                         , fieldElement.getType()
                         , fieldElement.getName()
                         , objName
                         , fieldElement
                                 .getModifiers()
-                                .contains(Modifier.PUBLIC) ? fieldElement.getName() : buildAccessorName("get", fieldElement.getName())+"()");
+                                .contains(Modifier.PUBLIC) ? fieldElement.getName() : buildAccessorName("get", fieldElement.getName()) + "()");
                 FieldElement targetFieldElement = null;
                 int start = columnType.indexOf("<");
-                int end  = columnType.indexOf(">");
-                String generic = columnType.substring(start+1, end);
+                int end = columnType.indexOf(">");
+                String generic = columnType.substring(start + 1, end);
                 if (clazzElements.containsKey(generic)) {
                     for (FieldElement fe : clazzElements.get(generic).getFieldElements()) {
                         if (fe.getColumnName().equals(fieldElement.getMappingColumnName())) {
@@ -551,25 +551,25 @@ public class ModelDaoGenerator extends ClazzGenerator {
                                 objName,
                                 fieldElement.getModifiers().contains(Modifier.PUBLIC)
                                         ? fieldElement.getName()
-                                        : buildAccessorName("get", fieldElement.getName())+"()",
+                                        : buildAccessorName("get", fieldElement.getName()) + "()",
                                 targetFieldElement.getModifiers().contains(Modifier.PUBLIC)
                                         ? targetFieldElement.getName()
-                                        : buildAccessorName("get", targetFieldElement.getName())+"()")
+                                        : buildAccessorName("get", targetFieldElement.getName()) + "()")
                         .endControlFlow();
                 saveBuilder.beginControlFlow("else")
                         .addStatement("cv.put($S, $S)", fieldElement.getColumnName(), "")
                         .endControlFlow();
             } else {
-                throw new IllegalArgumentException("Not support type ("+columnType+") yet!!!");
+                throw new IllegalArgumentException("Not support type (" + columnType + ") yet!!!");
             }
-        }else { // the base type
+        } else { // the base type
             saveBuilder.addStatement("cv.put($S, $L.$L)"
                     , fieldElement.getColumnName()
                     , objName
                     , fieldElement
                             .getModifiers().contains(Modifier.PUBLIC) ? fieldElement.getName()
                             : buildAccessorName("boolean".endsWith(columnType) ? "is" : "get",
-                            fieldElement.getName())+"()");
+                            fieldElement.getName()) + "()");
         }
     }
 

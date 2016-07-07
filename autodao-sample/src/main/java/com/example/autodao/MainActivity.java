@@ -2,6 +2,8 @@ package com.example.autodao;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteStatement;
+import android.support.v4.util.LruCache;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 
@@ -53,8 +55,8 @@ public class MainActivity extends AppCompatActivity {
         Photo photo = new Photo();
         photo.desc = "最后的晚餐";
         photo.path = new File(getCacheDir().getPath());
-        for (int i = 0; i< 100; i++) {
-            photo.desc = "photo"+i;
+        for (int i = 0; i < 100; i++) {
+            photo.desc = "photo" + i;
             new Insert(injector).from(Photo.class).with(photo).insert();
         }
 
@@ -63,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
         user.setAddresses(addresses);
         new Insert(injector).from(User.class).with(user).insert();
 
-        for (Address address:addresses)
+        for (Address address : addresses)
             new Insert(injector).from(Address.class).with(address).insert();
 
         photo.desc = "最后的早餐";
@@ -83,12 +85,12 @@ public class MainActivity extends AppCompatActivity {
 
         List<User> users = new Select(injector)
                 .from(User.class)
-                .where(UserContract.USERNAME_COLUMN+"=?", "tubb")
+                .where(UserContract.USERNAME_COLUMN + "=?", "tubb")
                 .select();
 
         User userObj = new Select(injector, UserContract._ID_COLUMN, UserContract.USERNAME_COLUMN, UserContract.IDCARD_COLUMN)
                 .from(User.class)
-                .where(UserContract.USERNAME_COLUMN+"=?", "tubb")
+                .where(UserContract.USERNAME_COLUMN + "=?", "tubb")
                 .selectSingle();
 
         Object obj = new JoinSelect(injector, "u._id uid", "u.userName userName", "a.name addressName")
@@ -130,12 +132,21 @@ public class MainActivity extends AppCompatActivity {
         new Insert(injectorS).from(Photo.class).with(photo2).insert();
 //        new Delete(injectorS).from(Photo.class).where(PhotoContract.DESC_COLUMN+"=?", "最后的xx").delete();
         photo2.desc = "最后的哈哈";
-        new Update(injectorS, PhotoContract.DESC_COLUMN).from(Photo.class).where(PhotoContract.DESC_COLUMN+"=?", "最后的xx").with(photo2).update();
+        new Update(injectorS, PhotoContract.DESC_COLUMN).from(Photo.class).where(PhotoContract.DESC_COLUMN + "=?", "最后的xx").with(photo2).update();
         dbS.close();
 
+        LruCache<String, SQLiteStatement> lruCache = new LruCache<String, SQLiteStatement>(3) {
+            @Override
+            protected void entryRemoved(boolean evicted, String key, SQLiteStatement oldValue, SQLiteStatement newValue) {
+                super.entryRemoved(evicted, key, oldValue, newValue);
+                if (evicted && oldValue != null) {
+                    oldValue.close();
+                }
+            }
+        };
     }
 
-    class UserAddress{
+    class UserAddress {
         long userId;
         public String userName;
         public String addressName;

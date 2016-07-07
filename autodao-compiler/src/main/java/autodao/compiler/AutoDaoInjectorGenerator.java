@@ -34,11 +34,12 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
         ClassName serializer = ClassName.get("autodao", "TypeSerializer");
         ClassName statement = ClassName.get("android.database.sqlite", "SQLiteStatement");
         ClassName hashMap = ClassName.get("java.util", "HashMap");
+        ClassName lruCache = ClassName.get("android.support.v4.util", "LruCache");
 
         TypeName hashMapOfDao = ParameterizedTypeName.get(hashMap, string, modelDao);
         TypeName hashMapOfTable = ParameterizedTypeName.get(hashMap, string, string);
         TypeName hashMapOfSerializer = ParameterizedTypeName.get(hashMap, string, serializer);
-        TypeName hashMapOfStatement = ParameterizedTypeName.get(hashMap, string, statement);
+        TypeName lruCacheOfStatement = ParameterizedTypeName.get(lruCache, string, statement);
 
         // select & selectSingle method
         TypeVariableName modelTypeVariableName = TypeVariableName.get("M extends autodao.Model");
@@ -48,7 +49,8 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
         FieldSpec daoMapFieldSpec = generateDaoMapField(hashMap, hashMapOfDao);
         FieldSpec tableFieldSpec = generateTableField(hashMap, hashMapOfTable);
         FieldSpec serializerFieldSpec = generateSerializerMapField(hashMap, hashMapOfSerializer);
-        FieldSpec statementFieldSpec = generateStatementMapField(hashMap, hashMapOfStatement);
+
+        FieldSpec statementFieldSpec = generateStatementMapField(lruCacheOfStatement, statement);
 
         MethodSpec.Builder flux = generateConstructorMethod();
         MethodSpec.Builder joinSelect = generateJoinSelectMethod(modelDao);
@@ -59,7 +61,7 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
         MethodSpec.Builder putStatement = generatePutStatementMethod();
 
         TypeSpec.Builder typeSpecBuilder = TypeSpec.classBuilder(INJECTOR_NAME)
-                .addModifiers(Modifier.PUBLIC)
+                .addModifiers(Modifier.PUBLIC).addModifiers(Modifier.FINAL)
                 .addSuperinterface(ClassName.get("autodao", "Injector"))
                 .addField(daoMapFieldSpec)
                 .addField(tableFieldSpec)
@@ -146,8 +148,6 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
                 .addModifiers(Modifier.PUBLIC)
                 .returns(cursorClass)
                 .addParameter(operatorClass, "operator")
-                .addStatement("String table = $L.get(operator.getTableName())",
-                        INJECTOR_TABLE_MAP_FIELD_NAME)
                 .addStatement("$T dao = $L.get(operator.getModelCanonicalName())",
                         modelDao,
                         INJECTOR_DAO_MAP_FIELD_NAME)
@@ -166,15 +166,14 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
 
     @NonNull
     private MethodSpec.Builder generateSqlSelectMethod(ClassName modelDao,
-                                                    TypeVariableName modelTypeVariableName,
-                                                    TypeVariableName listTypeGenerics) {
+                                                       TypeVariableName modelTypeVariableName,
+                                                       TypeVariableName listTypeGenerics) {
         ClassName operatorClass = ClassName.get("autodao", "Operator");
         return MethodSpec.methodBuilder("select")
                 .addModifiers(Modifier.PUBLIC)
                 .addTypeVariable(modelTypeVariableName)
                 .returns(listTypeGenerics)
                 .addParameter(operatorClass, "operator")
-                .addStatement("String table = operator.getTableName()")
                 .addStatement("$T dao = $L.get(operator.getModelCanonicalName())",
                         modelDao,
                         INJECTOR_DAO_MAP_FIELD_NAME)
@@ -183,15 +182,14 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
 
     @NonNull
     private MethodSpec.Builder generateSqlSelectSingleMethod(ClassName modelDao,
-                                                       TypeVariableName modelTypeVariableName,
-                                                       TypeVariableName listTypeGenerics) {
+                                                             TypeVariableName modelTypeVariableName,
+                                                             TypeVariableName listTypeGenerics) {
         ClassName operatorClass = ClassName.get("autodao", "Operator");
         return MethodSpec.methodBuilder("selectSingle")
                 .addModifiers(Modifier.PUBLIC)
                 .addTypeVariable(modelTypeVariableName)
                 .returns(listTypeGenerics)
                 .addParameter(operatorClass, "operator")
-                .addStatement("String table = operator.getTableName()")
                 .addStatement("$T dao = $L.get(operator.getModelCanonicalName())",
                         modelDao,
                         INJECTOR_DAO_MAP_FIELD_NAME)
@@ -293,17 +291,17 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
     @NonNull
     private FieldSpec generateTableField(ClassName hashMap, TypeName hashMapOfTable) {
         return FieldSpec.builder(hashMapOfTable, INJECTOR_TABLE_MAP_FIELD_NAME)
-                    .addModifiers(Modifier.PRIVATE)
-                    .initializer("new $T()", hashMap)
-                    .build();
+                .addModifiers(Modifier.PRIVATE)
+                .initializer("new $T()", hashMap)
+                .build();
     }
 
     @NonNull
     private FieldSpec generateDaoMapField(ClassName hashMap, TypeName hashMapOfDao) {
         return FieldSpec.builder(hashMapOfDao, INJECTOR_DAO_MAP_FIELD_NAME)
-                    .addModifiers(Modifier.PRIVATE)
-                    .initializer("new $T()", hashMap)
-                    .build();
+                .addModifiers(Modifier.PRIVATE)
+                .initializer("new $T()", hashMap)
+                .build();
     }
 
     @NonNull
@@ -315,10 +313,31 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
     }
 
     @NonNull
-    private FieldSpec generateStatementMapField(ClassName hashMap, TypeName hashMapOfStatement) {
-        return FieldSpec.builder(hashMapOfStatement, INJECTOR_STATEMEN_MAP_FIELD_NAME)
+    private FieldSpec generateStatementMapField(TypeName lruCacheOfStatement, ClassName statement) {
+
+        /**
+         *
+         * /**
+         new LruCache<String, SQLiteStatement>(3) {
+        @Override protected void entryRemoved(boolean evicted, String key, SQLiteStatement oldValue, SQLiteStatement newValue) {
+        super.entryRemoved(evicted, key, oldValue, newValue);
+        if (evicted && oldValue != null) {
+        oldValue.close();
+        }
+        }
+        };
+         */
+
+
+        return FieldSpec.builder(lruCacheOfStatement, INJECTOR_STATEMEN_MAP_FIELD_NAME)
                 .addModifiers(Modifier.PRIVATE)
-                .initializer("new $T()", hashMap)
+                .initializer("new $T(3){$L}", lruCacheOfStatement, "@Override\n" +
+                        "        protected void entryRemoved(boolean evicted, String key, SQLiteStatement oldValue, SQLiteStatement newValue) {\n" +
+                        "        super.entryRemoved(evicted, key, oldValue, newValue);\n" +
+                        "        if (evicted && oldValue != null) {\n" +
+                        "        oldValue.close();\n" +
+                        "        }\n" +
+                        "        }")
                 .build();
     }
 

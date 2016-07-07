@@ -215,7 +215,6 @@ public class TableContractGenerator extends ClazzGenerator {
         return createIndexBuilder.build();
     }
 
-
     private String getUniqueConstraint(FieldElement columnElement) {
         if (columnElement.isUnique()) {
             return " UNIQUE";
