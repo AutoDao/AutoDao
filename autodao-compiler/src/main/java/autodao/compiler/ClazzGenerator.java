@@ -12,6 +12,7 @@ public class ClazzGenerator {
     public static final String INJECTOR_DAO_MAP_FIELD_NAME = "daoMap";
     public static final String INJECTOR_TABLE_MAP_FIELD_NAME = "tableMap";
     public static final String INJECTOR_SERIALIZER_MAP_FIELD_NAME = "serializerMap";
+    public static final String INJECTOR_STATEMEN_MAP_FIELD_NAME = "statementMap";
 
     public String getCreateTableContractName() {
         return "CREATE_TABLE_SQL";

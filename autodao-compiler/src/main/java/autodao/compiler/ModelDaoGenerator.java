@@ -39,58 +39,56 @@ public class ModelDaoGenerator extends ClazzGenerator {
         ClassName model = ClassName.get(clazzElement.getPackageName(), modelName);
         ClassName sqlite = ClassName.get("android.database.sqlite", "SQLiteDatabase");
         ClassName contentValues = ClassName.get("android.content", "ContentValues");
-        ClassName autodao = ClassName.get("autodao", "AutoDao");
         ClassName cursor = ClassName.get("android.database", "Cursor");
-
-        MethodSpec.Builder saveBuilder = generateSaveMethod(clazzElement,
-                objName,
-                model,
-                sqlite,
-                contentValues,
-                autodao);
-        MethodSpec.Builder updateBuilder = generateUpdateMethod(clazzElement,
-                objName,
-                model,
-                sqlite,
-                contentValues,
-                autodao);
-
-        /**
-         <M extends Model> List<M> select(boolean distinct, String table, String[] columns, String selection, String[] selectionArgs
-         , String groupBy, String having, String orderBy, String limit);
-         <M extends Model> M selectSingle(boolean distinct, String table, String[] columns, String selection, String[] selectionArgs, String groupBy, String having, String orderBy, String limit);
-         */
 
         TypeVariableName modelTypeVariableName = TypeVariableName.get("M extends autodao.Model");
         TypeVariableName listTypeGenerics = TypeVariableName.get("java.util.List<M>");
         TypeVariableName modelTypeGenerics = TypeVariableName.get("M");
 
-        MethodSpec.Builder selectBuilder = generateSelectMethod(clazzElement,
+        MethodSpec.Builder sqlSelectBuilder = generateSqlSelectMethod(clazzElement,
                 objName,
                 modelDao,
                 model,
-                sqlite,
-                autodao,
                 cursor,
                 modelTypeVariableName,
                 listTypeGenerics);
-        MethodSpec.Builder selectSingleBuilder = generateSelectSingleMethod(clazzElement,
+        MethodSpec.Builder sqlSelectSingleBuilder = generateSqlSelectSingleMethod(clazzElement,
                 objName,
                 modelDao,
                 model,
-                sqlite,
-                autodao,
                 cursor,
                 modelTypeVariableName,
                 modelTypeGenerics);
 
-        MethodSpec.Builder deleteBuilder = MethodSpec.methodBuilder("delete")
+        MethodSpec.Builder joinSelectBuilder = generateJoinSelectMethod(cursor);
+
+        ClassName statementClass = ClassName.get("android.database.sqlite", "SQLiteStatement");
+        ClassName operatorClass = ClassName.get("autodao", "Operator");
+        MethodSpec.Builder sqlDeleteBuilder = MethodSpec.methodBuilder("delete")
                 .addModifiers(Modifier.PUBLIC)
                 .returns(int.class)
-                .addParameter(String.class, "table")
-                .addParameter(String.class, "whereClause")
-                .addParameter(String[].class, "whereArgs")
-                .addStatement("return db.delete(table, whereClause, whereArgs)");
+                .addParameter(operatorClass, "operator");
+        sqlDeleteBuilder.addStatement("db.acquireReference()");
+        sqlDeleteBuilder
+                .beginControlFlow("try")
+                .addStatement("$T compileSql = operator.toSql()", String.class)
+                .addStatement("$T statement = injector.getStatement(compileSql)", statementClass)
+                .beginControlFlow("if (statement == null) ")
+                .addStatement("statement = db.compileStatement(compileSql)", statementClass)
+                .addStatement("injector.putStatement(compileSql, statement)", statementClass)
+                .endControlFlow()
+                .addStatement("statement.clearBindings()")
+                .addStatement("operator.bindStatement(statement)")
+                .beginControlFlow("try")
+                .addStatement("return statement.executeUpdateDelete()")
+                .endControlFlow()
+                .beginControlFlow("finally")
+//                .addStatement("statement.close()")
+                .endControlFlow()
+                .endControlFlow()
+                .beginControlFlow("finally")
+                .addStatement("db.releaseReference()")
+                .endControlFlow();
 
         ClassName injectorClass = ClassName.get("autodao", "Injector");
         typeSpecBuilder.addField(sqlite, "db", Modifier.PRIVATE);
@@ -103,33 +101,42 @@ public class ModelDaoGenerator extends ClazzGenerator {
                 .addStatement("this.$N = $N", "injector", "injector")
                 .build();
         typeSpecBuilder.addMethod(flux);
-        typeSpecBuilder.addMethod(saveBuilder.build());
-        typeSpecBuilder.addMethod(updateBuilder.build());
-        typeSpecBuilder.addMethod(selectBuilder.build());
-        typeSpecBuilder.addMethod(selectSingleBuilder.build());
-        typeSpecBuilder.addMethod(deleteBuilder.build());
+        typeSpecBuilder.addMethod(generateSqlSaveMethod(clazzElement, objName, model, contentValues).build());
+        typeSpecBuilder.addMethod(sqlSelectBuilder.build());
+        typeSpecBuilder.addMethod(sqlSelectSingleBuilder.build());
+        typeSpecBuilder.addMethod(sqlDeleteBuilder.build());
+        typeSpecBuilder.addMethod(joinSelectBuilder.build());
+        typeSpecBuilder.addMethod(generateSqlUpdateMethod(clazzElement, objName, model, contentValues).build());
 
         return JavaFile.builder(clazzElement.getPackageName(), typeSpecBuilder.build()).build();
     }
 
+    private MethodSpec.Builder generateJoinSelectMethod(ClassName cursor) {
+
+        ClassName operatorClass = ClassName.get("autodao", "Operator");
+        MethodSpec.Builder joinSelectBuilder = MethodSpec
+                .methodBuilder("joinSelect")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(cursor)
+                .addParameter(operatorClass, "operator");
+        joinSelectBuilder.addStatement("return db.rawQuery(operator.toSql(), operator.getArgments())");
+        return joinSelectBuilder;
+    }
+
     @NonNull
-    private MethodSpec.Builder generateSelectSingleMethod(
+    private MethodSpec.Builder generateSqlSelectSingleMethod(
             ClazzElement clazzElement,
             String objName,
             ClassName modelDao,
             ClassName model,
-            ClassName sqlite,
-            ClassName autodao,
             ClassName cursor,
             TypeVariableName modelTypeVariableName,
             TypeVariableName modelTypeGenerics) {
 
-        return generateSelectOrSelectSingleMethod(clazzElement,
+        return generateSqlSelectOrSelectSingleMethod(clazzElement,
                 objName,
                 modelDao,
                 model,
-                sqlite,
-                autodao,
                 cursor,
                 modelTypeVariableName,
                 modelTypeGenerics,
@@ -137,22 +144,18 @@ public class ModelDaoGenerator extends ClazzGenerator {
     }
 
     @NonNull
-    private MethodSpec.Builder generateSelectMethod(ClazzElement clazzElement
-            , String objName
-            , ClassName modelDao
-            , ClassName model
-            , ClassName sqlite
-            , ClassName autodao
-            , ClassName cursor
-            , TypeVariableName modelTypeVariableName
-            , TypeVariableName listTypeGenerics) {
+    private MethodSpec.Builder generateSqlSelectMethod(ClazzElement clazzElement,
+                                                    String objName,
+                                                    ClassName modelDao,
+                                                    ClassName model,
+                                                    ClassName cursor,
+                                                    TypeVariableName modelTypeVariableName,
+                                                    TypeVariableName listTypeGenerics) {
 
-        return generateSelectOrSelectSingleMethod(clazzElement,
+        return generateSqlSelectOrSelectSingleMethod(clazzElement,
                 objName,
                 modelDao,
                 model,
-                sqlite,
-                autodao,
                 cursor,
                 modelTypeVariableName,
                 listTypeGenerics,
@@ -160,31 +163,22 @@ public class ModelDaoGenerator extends ClazzGenerator {
     }
 
     @NonNull
-    private MethodSpec.Builder generateSelectOrSelectSingleMethod(ClazzElement clazzElement
-            , String objName
-            , ClassName modelDao
-            , ClassName model
-            , ClassName sqlite
-            , ClassName autodao
-            , ClassName cursor
-            , TypeVariableName modelTypeVariableName
-            , TypeVariableName returnType
-            , boolean isCreateSelectMethod) {
+    private MethodSpec.Builder generateSqlSelectOrSelectSingleMethod(ClazzElement clazzElement,
+                                                                  String objName,
+                                                                  ClassName modelDao,
+                                                                  ClassName model,
+                                                                  ClassName cursor,
+                                                                  TypeVariableName modelTypeVariableName,
+                                                                  TypeVariableName returnType,
+                                                                  boolean isCreateSelectMethod) {
 
+        ClassName operatorClass = ClassName.get("autodao", "Operator");
         MethodSpec.Builder selectBuilder = MethodSpec
                 .methodBuilder(isCreateSelectMethod ? "select" : "selectSingle")
                 .addModifiers(Modifier.PUBLIC)
                 .addTypeVariable(modelTypeVariableName)
                 .returns(returnType)
-                .addParameter(boolean.class, "distinct")
-                .addParameter(String.class, "table")
-                .addParameter(String[].class, "columns")
-                .addParameter(String.class, "selection")
-                .addParameter(String[].class, "selectionArgs")
-                .addParameter(String.class, "groupBy")
-                .addParameter(String.class, "having")
-                .addParameter(String.class, "orderBy")
-                .addParameter(String.class, "limit");
+                .addParameter(operatorClass, "operator");
         String objNameList = objName + "List";
         if (isCreateSelectMethod)
             selectBuilder.addStatement("$T<$T> $L = null", List.class, model, objNameList);
@@ -192,22 +186,16 @@ public class ModelDaoGenerator extends ClazzGenerator {
         selectBuilder.beginControlFlow("try");
         //---------- try block start ---------------------
         // db
-//        selectBuilder.addStatement("$T db = $T.openDatabase()", sqlite, autodao);
-        selectBuilder.addStatement("cursor = db.query(distinct, table, columns, selection, selectionArgs, groupBy, having, orderBy, limit)");
+        selectBuilder.addStatement("cursor = db.rawQuery(operator.toSql(), operator.getArgments())");
 
         if (isCreateSelectMethod)
             selectBuilder.addStatement("$L = new $T<>(cursor.getCount())",
                     objNameList,
                     ArrayList.class);
-        /**
-         List<String> targetColumns = null;
-         if (columns != null)
-         targetColumns = Arrays.asList(columns);
-         */
         selectBuilder.addStatement("$T<String> targetColumns = null", List.class);
 
-        selectBuilder.beginControlFlow("if (columns != null)");
-        selectBuilder.addStatement("targetColumns = $T.asList(columns)", Arrays.class);
+        selectBuilder.beginControlFlow("if (operator.getTargetColumns() != null)");
+        selectBuilder.addStatement("targetColumns = $T.asList(operator.getTargetColumns())", Arrays.class);
         selectBuilder.endControlFlow();
 
         selectBuilder.beginControlFlow("while(cursor.moveToNext())");
@@ -262,9 +250,10 @@ public class ModelDaoGenerator extends ClazzGenerator {
                     for (FieldElement fe : clazzElements.get(generic).getFieldElements()) {
                         if (fe.getColumnName().equals(fieldElement.getMappingColumnName())){
                             ClazzElement mappingClazzElement = clazzElements.get(generic);
+                            String mappingCN = mappingClazzElement.getPackageName() + "." + mappingClazzElement.getName();
                             selectBuilder.addStatement("$T modelDao = injector.getModelDao($S)",
                                     modelDao,
-                                    mappingClazzElement.getPackageName() + "." + mappingClazzElement.getName());
+                                    mappingCN);
                             selectBuilder.addStatement("$L $L = cursor.$L(cursor.getColumnIndex($S))"
                                     , fe.getType()
                                     , fe.getName()
@@ -276,12 +265,12 @@ public class ModelDaoGenerator extends ClazzGenerator {
                                     String[].class,
                                     fe.getName());
 
-                            selectBuilder.addStatement("$L $L = modelDao.select(false, $S, null, $S, mappingSelectionArgs, null, null, null, null)",
+                            selectBuilder.addStatement("$L $L = new autodao.Select(injector).from($L.class).where($S, $L).select()",
                                     columnType,
                                     fieldName,
-                                    mappingClazzElement.getTableName(),
-                                    fieldElement.getMappingColumnName() + "=?");
-
+                                    mappingCN,
+                                    fieldElement.getMappingColumnName() + "=?",
+                                    fe.getName());
                             generateSetFieldValueStatement(objName, selectBuilder, fieldElement, fieldName);
                             break;
                         }
@@ -302,13 +291,12 @@ public class ModelDaoGenerator extends ClazzGenerator {
                         , ColumnTypeUtils.getSQLiteTypeMethod("long")
                         , columnName);
 
-                selectBuilder.addStatement("$L $L = modelDao.selectSingle(false, mappingTableName, null, $S, new $T[]{$T.valueOf(_id)}, null, null, null, null)"
-                        , columnType
-                        , fieldName
-                        , "_id=?"
-                        , String.class
-                        , String.class);
-
+                selectBuilder.addStatement("$L $L = new autodao.Select(injector).from($L.class).where($S, $L).selectSingle()",
+                        columnType,
+                        fieldName,
+                        columnType,
+                        "_id=?",
+                        "_id");
                 generateSetFieldValueStatement(objName, selectBuilder, fieldElement, fieldName);
             }else {
                 selectBuilder.addStatement("$L $L = cursor.$L(cursor.getColumnIndex($S))"
@@ -347,7 +335,6 @@ public class ModelDaoGenerator extends ClazzGenerator {
         return selectBuilder;
     }
 
-
     private void generateSetFieldValueStatement(String objName,
                                                 MethodSpec.Builder selectBuilder,
                                                 FieldElement fieldElement,
@@ -361,73 +348,91 @@ public class ModelDaoGenerator extends ClazzGenerator {
     }
 
     @NonNull
-    private MethodSpec.Builder generateUpdateMethod(ClazzElement clazzElement,
+    private MethodSpec.Builder generateSqlUpdateMethod(ClazzElement clazzElement,
                                                     String objName,
                                                     ClassName model,
-                                                    ClassName sqlite,
-                                                    ClassName contentValues,
-                                                    ClassName autodao) {
+                                                    ClassName contentValues) {
+        ClassName statementClass = ClassName.get("android.database.sqlite", "SQLiteStatement");
+        ClassName operatorClass = ClassName.get("autodao", "Operator");
+
         // update method
         MethodSpec.Builder updateBuilder = MethodSpec.methodBuilder("update")
                 .addModifiers(Modifier.PUBLIC)
                 .returns(int.class)
-                .addParameter(Object.class, "obj")
-                .addParameter(String.class, "whereClause")
-                .addParameter(String[].class, "whereArgs")
-                .addParameter(String[].class, "targetColumns");
+                .addParameter(operatorClass, "operator");
 
-        updateBuilder.addStatement("$T affectedRows = -1", int.class);
-
-        updateBuilder.beginControlFlow("try");
-
-        updateBuilder.addStatement("$T $L = ($T)obj", model, objName, model);
+        updateBuilder.addStatement("$T $L = ($T)(operator.getModel())", model, objName, model);
         updateBuilder.addStatement("$T cv = new $T()", contentValues, contentValues);
+        updateBuilder.addStatement("$T[] targetColumns = operator.getTargetColumns()", String.class);
         generateContentValues(clazzElement, objName, updateBuilder, true);
-        updateBuilder.addStatement("affectedRows = db.update($S, cv, whereClause, whereArgs)", clazzElement.getTableName());
 
-        updateBuilder.endControlFlow();
-        updateBuilder.beginControlFlow("catch($T e)", RuntimeException.class);
-        updateBuilder.addStatement("throw e");
-        updateBuilder.endControlFlow();
-        updateBuilder.beginControlFlow("finally");
-        updateBuilder.endControlFlow();
+        updateBuilder.addStatement("db.acquireReference()");
+        updateBuilder
+                .beginControlFlow("try")
+                .addStatement("$T compileSql = operator.toSql(cv)", String.class)
+                .addStatement("$T statement = injector.getStatement(compileSql)", statementClass)
+                .beginControlFlow("if (statement == null) ")
+                .addStatement("statement = db.compileStatement(compileSql)", statementClass)
+                .addStatement("injector.putStatement(compileSql, statement)", statementClass)
+                .endControlFlow()
+                .addStatement("statement.clearBindings()")
+                .addStatement("operator.bindStatement(statement)")
+                .beginControlFlow("try")
+                .addStatement("return statement.executeUpdateDelete()")
+                .endControlFlow()
+                .beginControlFlow("finally")
+//                .addStatement("statement.close()")
+                .endControlFlow()
+                .endControlFlow()
+                .beginControlFlow("finally")
+                .addStatement("db.releaseReference()")
+                .endControlFlow();
 
-        updateBuilder.addStatement("return affectedRows");
         return updateBuilder;
     }
 
     @NonNull
-    private MethodSpec.Builder generateSaveMethod(ClazzElement clazzElement,
-                                                  String objName,
-                                                  ClassName model,
-                                                  ClassName sqlite,
-                                                  ClassName contentValues,
-                                                  ClassName autodao) {
-        // save method
-        MethodSpec.Builder saveBuilder = MethodSpec.methodBuilder("save")
+    private MethodSpec.Builder generateSqlSaveMethod(ClazzElement clazzElement,
+                                                       String objName,
+                                                       ClassName model,
+                                                       ClassName contentValues) {
+        ClassName statementClass = ClassName.get("android.database.sqlite", "SQLiteStatement");
+        ClassName operatorClass = ClassName.get("autodao", "Operator");
+
+        // update method
+        MethodSpec.Builder updateBuilder = MethodSpec.methodBuilder("save")
                 .addModifiers(Modifier.PUBLIC)
                 .returns(long.class)
-                .addParameter(Object.class, "obj");
+                .addParameter(operatorClass, "operator");
 
-        saveBuilder.addStatement("$T _id = -1", long.class);
+        updateBuilder.addStatement("$T $L = ($T)(operator.getModel())", model, objName, model);
+        updateBuilder.addStatement("$T cv = new $T()", contentValues, contentValues);
+        updateBuilder.addStatement("$T[] targetColumns = operator.getTargetColumns()", String.class);
+        generateContentValues(clazzElement, objName, updateBuilder, true);
 
-        saveBuilder.beginControlFlow("try");
+        updateBuilder.addStatement("db.acquireReference()");
+        updateBuilder
+                .beginControlFlow("try")
+                .addStatement("$T compileSql = operator.toSql(cv)", String.class)
+                .addStatement("$T statement = injector.getStatement(compileSql)", statementClass)
+                .beginControlFlow("if (statement == null) ")
+                .addStatement("statement = db.compileStatement(compileSql)", statementClass)
+                .addStatement("injector.putStatement(compileSql, statement)", statementClass)
+                .endControlFlow()
+                .addStatement("statement.clearBindings()")
+                .addStatement("operator.bindStatement(statement)")
+                .beginControlFlow("try")
+                .addStatement("return statement.executeInsert()")
+                .endControlFlow()
+                .beginControlFlow("finally")
+//                .addStatement("statement.close()")
+                .endControlFlow()
+                .endControlFlow()
+                .beginControlFlow("finally")
+                .addStatement("db.releaseReference()")
+                .endControlFlow();
 
-        saveBuilder.addStatement("$T $L = ($T)obj", model, objName, model);
-        saveBuilder.addStatement("$T cv = new $T()", contentValues, contentValues);
-        generateContentValues(clazzElement, objName, saveBuilder, false);
-        saveBuilder.addStatement("_id = db.insert($S, $L, cv)", clazzElement.getTableName(), null);
-        saveBuilder.addStatement("$L._id = _id", objName);
-
-        saveBuilder.endControlFlow();
-        saveBuilder.beginControlFlow("catch($T e)", RuntimeException.class);
-        saveBuilder.addStatement("throw e");
-        saveBuilder.endControlFlow();
-        saveBuilder.beginControlFlow("finally");
-        saveBuilder.endControlFlow();
-
-        saveBuilder.addStatement("return _id");
-        return saveBuilder;
+        return updateBuilder;
     }
 
     private void generateContentValues(ClazzElement clazzElement,

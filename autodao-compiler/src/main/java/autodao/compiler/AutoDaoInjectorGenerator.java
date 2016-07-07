@@ -32,11 +32,13 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
         ClassName string = ClassName.get(String.class);
         ClassName modelDao = ClassName.get("autodao", "ModelDao");
         ClassName serializer = ClassName.get("autodao", "TypeSerializer");
+        ClassName statement = ClassName.get("android.database.sqlite", "SQLiteStatement");
         ClassName hashMap = ClassName.get("java.util", "HashMap");
 
         TypeName hashMapOfDao = ParameterizedTypeName.get(hashMap, string, modelDao);
         TypeName hashMapOfTable = ParameterizedTypeName.get(hashMap, string, string);
         TypeName hashMapOfSerializer = ParameterizedTypeName.get(hashMap, string, serializer);
+        TypeName hashMapOfStatement = ParameterizedTypeName.get(hashMap, string, statement);
 
         // select & selectSingle method
         TypeVariableName modelTypeVariableName = TypeVariableName.get("M extends autodao.Model");
@@ -46,20 +48,15 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
         FieldSpec daoMapFieldSpec = generateDaoMapField(hashMap, hashMapOfDao);
         FieldSpec tableFieldSpec = generateTableField(hashMap, hashMapOfTable);
         FieldSpec serializerFieldSpec = generateSerializerMapField(hashMap, hashMapOfSerializer);
+        FieldSpec statementFieldSpec = generateStatementMapField(hashMap, hashMapOfStatement);
 
         MethodSpec.Builder flux = generateConstructorMethod();
-        MethodSpec save = generateSaveMethod(modelDao);
-        MethodSpec update = generateUpdateMethod(modelDao);
-        MethodSpec delete = generateDeleteMethod(modelDao);
-        MethodSpec.Builder select = generateSelectMethod(modelDao,
-                modelTypeVariableName,
-                listTypeGenerics);
-        MethodSpec.Builder selectSingle = generateSelectSingleMethod(modelDao,
-                modelTypeVariableName,
-                modelTypeGenerics);
+        MethodSpec.Builder joinSelect = generateJoinSelectMethod(modelDao);
         MethodSpec.Builder getModelDao = generateGetModelDaoMethod(modelDao);
         MethodSpec.Builder getTableName = generateGetTableNameMethod();
         MethodSpec.Builder getSerializer = generateGetSerializerMethod();
+        MethodSpec.Builder getStatement = generateGetStatementMethod();
+        MethodSpec.Builder putStatement = generatePutStatementMethod();
 
         TypeSpec.Builder typeSpecBuilder = TypeSpec.classBuilder(INJECTOR_NAME)
                 .addModifiers(Modifier.PUBLIC)
@@ -67,15 +64,21 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
                 .addField(daoMapFieldSpec)
                 .addField(tableFieldSpec)
                 .addField(serializerFieldSpec)
+                .addField(statementFieldSpec)
                 .addMethod(flux.build())
-                .addMethod(save)
-                .addMethod(update)
-                .addMethod(delete)
-                .addMethod(select.build())
-                .addMethod(selectSingle.build())
+                .addMethod(generateSqlSaveMethod(modelDao))
+                .addMethod(generateSqlUpdateMethod(modelDao))
+                .addMethod(generateSqlDeleteMethod(modelDao))
+                .addMethod(generateSqlSelectMethod(modelDao, modelTypeVariableName, listTypeGenerics).build())
+                .addMethod(generateSqlSelectSingleMethod(modelDao,
+                        modelTypeVariableName,
+                        modelTypeGenerics).build())
+                .addMethod(joinSelect.build())
                 .addMethod(getModelDao.build())
                 .addMethod(getTableName.build())
-                .addMethod(getSerializer.build());
+                .addMethod(getSerializer.build())
+                .addMethod(getStatement.build())
+                .addMethod(putStatement.build());
 
         return JavaFile.builder(INJECTOR_PKG, typeSpecBuilder.build()).build();
     }
@@ -114,28 +117,46 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
     }
 
     @NonNull
-    private MethodSpec.Builder generateSelectSingleMethod(ClassName modelDao,
-                                                          TypeVariableName modelTypeVariableName,
-                                                          TypeVariableName modelTypeGenerics) {
-        return MethodSpec.methodBuilder("selectSingle")
-                    .addModifiers(Modifier.PUBLIC)
-                    .addTypeVariable(modelTypeVariableName)
-                    .returns(modelTypeGenerics)
-                    .addParameter(boolean.class, "distinct")
-                    .addParameter(Class.class, "clazz")
-                    .addParameter(String[].class, "columns")
-                    .addParameter(String.class, "selection")
-                    .addParameter(String[].class, "selectionArgs")
-                    .addParameter(String.class, "groupBy")
-                    .addParameter(String.class, "having")
-                    .addParameter(String.class, "orderBy")
-                    .addParameter(String.class, "limit")
-                    .addStatement("String table = $L.get(clazz.getCanonicalName())",
-                            INJECTOR_TABLE_MAP_FIELD_NAME)
-                    .addStatement("$T dao = $L.get(clazz.getCanonicalName())",
-                            modelDao,
-                            INJECTOR_DAO_MAP_FIELD_NAME)
-                    .addStatement("return dao.selectSingle($L)", getSelectParams());
+    private MethodSpec.Builder generateGetStatementMethod() {
+        MethodSpec.Builder getStatementBuilder = MethodSpec.methodBuilder("getStatement")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(ClassName.get("android.database.sqlite", "SQLiteStatement"))
+                .addParameter(String.class, "mappingSql");
+        getStatementBuilder.addStatement("return $L.get(mappingSql)",
+                INJECTOR_STATEMEN_MAP_FIELD_NAME);
+        return getStatementBuilder;
+    }
+
+    @NonNull
+    private MethodSpec.Builder generatePutStatementMethod() {
+        MethodSpec.Builder putStatementBuilder = MethodSpec.methodBuilder("putStatement")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(String.class, "mappingSql")
+                .addParameter(ClassName.get("android.database.sqlite", "SQLiteStatement"), "statement");
+        putStatementBuilder.addStatement("$L.put(mappingSql, statement)",
+                INJECTOR_STATEMEN_MAP_FIELD_NAME);
+        return putStatementBuilder;
+    }
+
+    @NonNull
+    private MethodSpec.Builder generateJoinSelectMethod(ClassName modelDao) {
+        ClassName cursorClass = ClassName.get("android.database", "Cursor");
+        ClassName operatorClass = ClassName.get("autodao", "Operator");
+        return MethodSpec.methodBuilder("joinSelect")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(cursorClass)
+                .addParameter(operatorClass, "operator")
+                .addStatement("String table = $L.get(operator.getTableName())",
+                        INJECTOR_TABLE_MAP_FIELD_NAME)
+                .addStatement("$T dao = $L.get(operator.getModelCanonicalName())",
+                        modelDao,
+                        INJECTOR_DAO_MAP_FIELD_NAME)
+                .addStatement("return dao.joinSelect(operator)");
+    }
+
+    @NonNull
+    private String getJoinSelectParams() {
+        return "distinct,table,columns,selection,selectionArgs,groupBy,having,orderBy,limit,joinTable,joinType,on,fromTableAlias,joinTableAlias";
     }
 
     @NonNull
@@ -144,79 +165,85 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
     }
 
     @NonNull
-    private MethodSpec.Builder generateSelectMethod(ClassName modelDao,
+    private MethodSpec.Builder generateSqlSelectMethod(ClassName modelDao,
                                                     TypeVariableName modelTypeVariableName,
                                                     TypeVariableName listTypeGenerics) {
+        ClassName operatorClass = ClassName.get("autodao", "Operator");
         return MethodSpec.methodBuilder("select")
-                    .addModifiers(Modifier.PUBLIC)
-                    .addTypeVariable(modelTypeVariableName)
-                    .returns(listTypeGenerics)
-                    .addParameter(boolean.class, "distinct")
-                    .addParameter(Class.class, "clazz")
-                    .addParameter(String[].class, "columns")
-                    .addParameter(String.class, "selection")
-                    .addParameter(String[].class, "selectionArgs")
-                    .addParameter(String.class, "groupBy")
-                    .addParameter(String.class, "having")
-                    .addParameter(String.class, "orderBy")
-                    .addParameter(String.class, "limit")
-                    .addStatement("String table = $L.get(clazz.getCanonicalName())",
-                            INJECTOR_TABLE_MAP_FIELD_NAME)
-                    .addStatement("$T dao = $L.get(clazz.getCanonicalName())",
-                            modelDao,
-                            INJECTOR_DAO_MAP_FIELD_NAME)
-                    .addStatement("return dao.select($L)", getSelectParams());
+                .addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(modelTypeVariableName)
+                .returns(listTypeGenerics)
+                .addParameter(operatorClass, "operator")
+                .addStatement("String table = operator.getTableName()")
+                .addStatement("$T dao = $L.get(operator.getModelCanonicalName())",
+                        modelDao,
+                        INJECTOR_DAO_MAP_FIELD_NAME)
+                .addStatement("return dao.select(operator)");
     }
 
     @NonNull
-    private MethodSpec generateDeleteMethod(ClassName modelDao) {
+    private MethodSpec.Builder generateSqlSelectSingleMethod(ClassName modelDao,
+                                                       TypeVariableName modelTypeVariableName,
+                                                       TypeVariableName listTypeGenerics) {
+        ClassName operatorClass = ClassName.get("autodao", "Operator");
+        return MethodSpec.methodBuilder("selectSingle")
+                .addModifiers(Modifier.PUBLIC)
+                .addTypeVariable(modelTypeVariableName)
+                .returns(listTypeGenerics)
+                .addParameter(operatorClass, "operator")
+                .addStatement("String table = operator.getTableName()")
+                .addStatement("$T dao = $L.get(operator.getModelCanonicalName())",
+                        modelDao,
+                        INJECTOR_DAO_MAP_FIELD_NAME)
+                .addStatement("return dao.selectSingle(operator)");
+    }
+
+    @NonNull
+    private MethodSpec generateSqlUpdateMethod(ClassName modelDao) {
+        ClassName operator = ClassName.get("autodao", "Operator");
         // int delete(Class clazz, String whereClause, String[] whereArgs);
-        MethodSpec.Builder deleteBuilder = MethodSpec.methodBuilder("delete")
+        MethodSpec.Builder deleteBuilder = MethodSpec.methodBuilder("update")
                 .addModifiers(Modifier.PUBLIC)
                 .returns(int.class)
-                .addParameter(Class.class, "clazz")
-                .addParameter(String.class, "whereClause")
-                .addParameter(String[].class, "whereArgs");
-        deleteBuilder.addStatement("String table = $L.get(clazz.getCanonicalName())",
-                INJECTOR_TABLE_MAP_FIELD_NAME)
-                .addStatement("$T dao = $L.get(clazz.getCanonicalName())",
-                    modelDao,
-                    INJECTOR_DAO_MAP_FIELD_NAME)
-                .addStatement("return dao.delete(table, whereClause, whereArgs)");
+                .addParameter(operator, "operator");
+        deleteBuilder
+                .addStatement("$T dao = $L.get(operator.getModelCanonicalName())",
+                        modelDao,
+                        INJECTOR_DAO_MAP_FIELD_NAME)
+                .addStatement("return dao.update(operator)");
         return deleteBuilder.build();
     }
 
     @NonNull
-    private MethodSpec generateUpdateMethod(ClassName modelDao) {
-        // int update(Class clazz, Object obj, String whereClause, String[] whereArgs);
-        MethodSpec.Builder updateBuilder = MethodSpec.methodBuilder("update")
+    private MethodSpec generateSqlDeleteMethod(ClassName modelDao) {
+        ClassName operator = ClassName.get("autodao", "Operator");
+        // int delete(Class clazz, String whereClause, String[] whereArgs);
+        MethodSpec.Builder deleteBuilder = MethodSpec.methodBuilder("delete")
                 .addModifiers(Modifier.PUBLIC)
                 .returns(int.class)
-                .addParameter(Class.class, "clazz")
-                .addParameter(Object.class, "obj")
-                .addParameter(String.class, "whereClause")
-                .addParameter(String[].class, "whereArgs")
-                .addParameter(String[].class, "targetColumns");
-        updateBuilder.addStatement("$T dao = $L.get(clazz.getCanonicalName())",
-                modelDao,
-                INJECTOR_DAO_MAP_FIELD_NAME);
-        updateBuilder.addStatement("return dao.update(obj, whereClause, whereArgs, targetColumns)");
-        return updateBuilder.build();
+                .addParameter(operator, "operator");
+        deleteBuilder
+                .addStatement("$T dao = $L.get(operator.getModelCanonicalName())",
+                        modelDao,
+                        INJECTOR_DAO_MAP_FIELD_NAME)
+                .addStatement("return dao.delete(operator)");
+        return deleteBuilder.build();
     }
 
     @NonNull
-    private MethodSpec generateSaveMethod(ClassName modelDao) {
-        // long save(Class clazz, Object obj);
-        MethodSpec.Builder saveBuilder = MethodSpec.methodBuilder("save")
+    private MethodSpec generateSqlSaveMethod(ClassName modelDao) {
+        ClassName operator = ClassName.get("autodao", "Operator");
+        // int delete(Class clazz, String whereClause, String[] whereArgs);
+        MethodSpec.Builder deleteBuilder = MethodSpec.methodBuilder("save")
                 .addModifiers(Modifier.PUBLIC)
                 .returns(long.class)
-                .addParameter(Class.class, "clazz")
-                .addParameter(Object.class, "obj");
-        saveBuilder.addStatement("$T dao = $L.get(clazz.getCanonicalName())",
-                modelDao,
-                INJECTOR_DAO_MAP_FIELD_NAME);
-        saveBuilder.addStatement("return dao.save(obj)");
-        return saveBuilder.build();
+                .addParameter(operator, "operator");
+        deleteBuilder
+                .addStatement("$T dao = $L.get(operator.getModelCanonicalName())",
+                        modelDao,
+                        INJECTOR_DAO_MAP_FIELD_NAME)
+                .addStatement("return dao.save(operator)");
+        return deleteBuilder.build();
     }
 
     @NonNull
@@ -282,6 +309,14 @@ public class AutoDaoInjectorGenerator extends ClazzGenerator {
     @NonNull
     private FieldSpec generateSerializerMapField(ClassName hashMap, TypeName hashMapOfDao) {
         return FieldSpec.builder(hashMapOfDao, INJECTOR_SERIALIZER_MAP_FIELD_NAME)
+                .addModifiers(Modifier.PRIVATE)
+                .initializer("new $T()", hashMap)
+                .build();
+    }
+
+    @NonNull
+    private FieldSpec generateStatementMapField(ClassName hashMap, TypeName hashMapOfStatement) {
+        return FieldSpec.builder(hashMapOfStatement, INJECTOR_STATEMEN_MAP_FIELD_NAME)
                 .addModifiers(Modifier.PRIVATE)
                 .initializer("new $T()", hashMap)
                 .build();

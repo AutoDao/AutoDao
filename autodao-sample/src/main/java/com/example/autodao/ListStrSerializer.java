@@ -10,7 +10,7 @@ import autodao.TypeSerializer;
 /**
  * Created by tubingbing on 16/6/19.
  */
-public class ListStrSerializer extends TypeSerializer{
+public class ListStrSerializer implements TypeSerializer{
 
     @Override
     public Object serialize(Object data) {

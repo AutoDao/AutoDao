@@ -117,6 +117,7 @@ public class AutoDaoProcessor extends AbstractProcessor {
                     javaGenerator.generateTableDao(clazzElement).writeTo(filer);
                 }
             } catch (Exception e) {
+                e.printStackTrace();
                 error("Generate Table Contract OR Model DAO failure", e);
             }
 

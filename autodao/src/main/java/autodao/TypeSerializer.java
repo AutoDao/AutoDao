@@ -1,8 +1,8 @@
 package autodao;
 
-public abstract class TypeSerializer {
+public interface TypeSerializer {
 
-    public abstract Object serialize(Object data);
+    Object serialize(Object data);
 
-    public abstract Object deserialize(Object data);
+    Object deserialize(Object data);
 }

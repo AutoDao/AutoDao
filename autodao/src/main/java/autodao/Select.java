@@ -1,5 +1,7 @@
 package autodao;
 
+import android.database.sqlite.SQLiteQueryBuilder;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -8,12 +10,11 @@ import java.util.List;
  */
 public class Select extends Operator {
 
-    String[] queryColumns;
-    boolean distinct = false;
-    String groupBy;
-    String having;
-    String orderBy;
-    String limit;
+    protected boolean distinct = false;
+    protected String groupBy;
+    protected String having;
+    protected String orderBy;
+    protected String limit;
 
     public Select(Injector injector) {
         super(injector);
@@ -21,7 +22,7 @@ public class Select extends Operator {
 
     public Select(Injector injector, String...columns) {
         super(injector);
-        queryColumns = columns;
+        targetColumns = columns;
     }
 
     public Select from(Class<? extends Model> clazz) {
@@ -65,30 +66,38 @@ public class Select extends Operator {
     }
 
     public <M extends Model> List<M> select() {
-        if (this.clazz == null)
-            throw new IllegalArgumentException("Must call from(Class clazz) to set the Class");
-        if (queryColumns != null) {
-            List<String> columnList = Arrays.asList(queryColumns);
-            if (!columnList.contains("_id")) {
-                columnList.add("_id");
-                queryColumns = (String[]) columnList.toArray();
-            }
-        }
-        return injector.select(distinct, clazz, queryColumns
-                , mWhere.toString(), getArgments(), groupBy, having, orderBy, limit);
+        checkSelect();
+        return injector.select(this);
     }
 
     public <M extends Model> M selectSingle() {
+        checkSelect();
+        return injector.selectSingle(this);
+    }
+
+    @Override
+    public String toSql() {
+        String sql = SQLiteQueryBuilder.buildQueryString(distinct,
+                getTableName(),
+                targetColumns,
+                mWhere.toString(),
+                groupBy,
+                having, orderBy, limit);
+        if (AutoDaoLog.isDebug())
+            AutoDaoLog.d(sql);
+        return sql;
+    }
+
+    private void checkSelect() {
         if (this.clazz == null)
             throw new IllegalArgumentException("Must call from(Class clazz) to set the Class");
-        if (queryColumns != null) {
-            List<String> columnList = Arrays.asList(queryColumns);
+        if (targetColumns != null) {
+            List<String> columnList = Arrays.asList(targetColumns);
             if (!columnList.contains("_id")) {
                 columnList.add("_id");
-                queryColumns = (String[]) columnList.toArray();
+                targetColumns = (String[]) columnList.toArray();
             }
         }
-        return injector.selectSingle(distinct, clazz, queryColumns
-                , mWhere.toString(), getArgments(), groupBy, having, orderBy, limit);
     }
+
 }

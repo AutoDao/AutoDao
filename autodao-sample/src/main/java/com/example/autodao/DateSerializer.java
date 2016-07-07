@@ -7,7 +7,7 @@ import autodao.TypeSerializer;
 /**
  * Created by tubingbing on 16/6/20.
  */
-public class DateSerializer extends TypeSerializer{
+public class DateSerializer implements TypeSerializer{
 
     @Override
     public Object serialize(Object data) {

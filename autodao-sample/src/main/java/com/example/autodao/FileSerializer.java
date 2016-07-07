@@ -7,7 +7,7 @@ import autodao.TypeSerializer;
 /**
  * Created by tubingbing on 16/6/23.
  */
-public class FileSerializer extends TypeSerializer{
+public class FileSerializer implements TypeSerializer{
 
     @Override
     public Object serialize(Object data) {

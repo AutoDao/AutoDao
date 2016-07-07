@@ -1,6 +1,8 @@
 package autodao;
 
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteStatement;
 
 import java.util.List;
 
@@ -9,32 +11,15 @@ import java.util.List;
  */
 public interface Injector {
 
-    long save(Class clazz, Object obj);
-    int delete(Class clazz, String whereClause, String[] whereArgs);
-    int update(Class clazz,
-               Object obj,
-               String whereClause,
-               String[] whereArgs,
-               String[] updateColumns);
-    <M extends Model> List<M> select(boolean distinct,
-                                     Class clazz,
-                                     String[] columns,
-                                     String selection,
-                                     String[] selectionArgs,
-                                     String groupBy,
-                                     String having,
-                                     String orderBy,
-                                     String limit);
-    <M extends Model> M selectSingle(boolean distinct,
-                                     Class clazz,
-                                     String[] columns,
-                                     String selection,
-                                     String[] selectionArgs,
-                                     String groupBy,
-                                     String having,
-                                     String orderBy,
-                                     String limit);
+    long save(Operator operator);
+    int delete(Operator operator);
+    int update(Operator operator);
+    <M extends Model> List<M> select(Operator operator);
+    <M extends Model> M selectSingle(Operator operator);
+    Cursor joinSelect(Operator operator);
     ModelDao getModelDao(String clazzName);
     String getTableName(String clazzName);
     TypeSerializer getSerializer(String serializerCanonicalName);
+    SQLiteStatement getStatement(String mappingSql);
+    void putStatement(String mappingSql, SQLiteStatement statement);
 }
