@@ -205,7 +205,7 @@ public class JoinSelect extends Operator{
     }
 
     private String getJoinTypeStr() {
-        String type = "";
+        String type;
         switch (joinType) {
             case JoinType.LEFT:
                 type = "LEFT JOIN";

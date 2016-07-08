@@ -82,7 +82,9 @@ public class Select extends Operator {
                 targetColumns,
                 mWhere.toString(),
                 groupBy,
-                having, orderBy, limit);
+                having,
+                orderBy,
+                limit);
         if (AutoDaoLog.isDebug())
             AutoDaoLog.d(sql);
         return sql;

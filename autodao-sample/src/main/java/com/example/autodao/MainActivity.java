@@ -3,6 +3,7 @@ package com.example.autodao;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteStatement;
+import android.os.SystemClock;
 import android.support.v4.util.LruCache;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -11,6 +12,7 @@ import com.alibaba.fastjson.JSON;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -47,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
         user.setLogined(true);
         byte[] avatar = "哈哈".getBytes();
         user.setAvatar(avatar);
+        user.createTime = new Date(System.currentTimeMillis());
 
         List<Address> addresses = new ArrayList<>();
         addresses.add(new Address("长沙", 1111));
@@ -55,11 +58,18 @@ public class MainActivity extends AppCompatActivity {
         Photo photo = new Photo();
         photo.desc = "最后的晚餐";
         photo.path = new File(getCacheDir().getPath());
-        for (int i = 0; i < 100; i++) {
-            photo.desc = "photo" + i;
-            new Insert(injector).from(Photo.class).with(photo).insert();
-        }
 
+//        long preT = System.currentTimeMillis();
+//        db.beginTransaction();
+        for (int i = 0; i < 10; i++) {
+            photo.desc = "photo";
+            new Insert(injector, PhotoContract.DESC_COLUMN).from(Photo.class).with(photo).insert();
+        }
+//        db.setTransactionSuccessful();
+//        db.endTransaction();
+//        long take = System.currentTimeMillis() - preT;
+
+//        AutoDaoLog.d("take:"+take);
 
         user.setPhoto(photo);
         user.setAddresses(addresses);
@@ -85,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
 
         List<User> users = new Select(injector)
                 .from(User.class)
-                .where(UserContract.USERNAME_COLUMN + "=?", "tubb")
+                .where(UserContract.USERNAME_COLUMN + "=?", "tu2bb")
                 .select();
 
         User userObj = new Select(injector, UserContract._ID_COLUMN, UserContract.USERNAME_COLUMN, UserContract.IDCARD_COLUMN)
@@ -134,16 +144,7 @@ public class MainActivity extends AppCompatActivity {
         photo2.desc = "最后的哈哈";
         new Update(injectorS, PhotoContract.DESC_COLUMN).from(Photo.class).where(PhotoContract.DESC_COLUMN + "=?", "最后的xx").with(photo2).update();
         dbS.close();
-
-        LruCache<String, SQLiteStatement> lruCache = new LruCache<String, SQLiteStatement>(3) {
-            @Override
-            protected void entryRemoved(boolean evicted, String key, SQLiteStatement oldValue, SQLiteStatement newValue) {
-                super.entryRemoved(evicted, key, oldValue, newValue);
-                if (evicted && oldValue != null) {
-                    oldValue.close();
-                }
-            }
-        };
+//        Collections.EMPTY_LIST;
     }
 
     class UserAddress {

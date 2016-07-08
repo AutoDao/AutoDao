@@ -4,6 +4,7 @@ import android.content.ContentValues;
 import android.text.TextUtils;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -45,13 +46,14 @@ public class Update extends Operator {
             throw new IllegalArgumentException("Must call from(Class clazz) to set the Class");
         if (this.model == null)
             throw new IllegalArgumentException("Must call with(Model model) to set the Model");
-
+        if (targetColumns != null) {
+            List<String> columns = Arrays.asList(targetColumns);
+            if (columns.contains("_id")) {
+                columns.remove("_id");
+                targetColumns = (String[]) columns.toArray();
+            }
+        }
         return injector.update(this);
-//        return injector.update(clazz,
-//                model,
-//                mWhere.toString(),
-//                getArgments(),
-//                targetColumns);
     }
 
     @Override
@@ -82,9 +84,10 @@ public class Update extends Operator {
             sql.append(" WHERE ");
             sql.append(mWhere.toString());
         }
+        String sqlStr = sql.toString();
         mArguments = Arrays.asList(bindArgs);
         if (AutoDaoLog.isDebug())
-            AutoDaoLog.d(sql.toString());
-        return sql.toString();
+            AutoDaoLog.d(sqlStr);
+        return sqlStr;
     }
 }

@@ -3,6 +3,7 @@ package autodao;
 import android.content.ContentValues;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -12,6 +13,11 @@ public class Insert extends Operator {
 
     public Insert(Injector injector) {
         super(injector);
+    }
+
+    public Insert(Injector injector, String...columns) {
+        super(injector);
+        targetColumns = columns;
     }
 
     public Insert from(Class<? extends Model> clazz) {
@@ -29,6 +35,13 @@ public class Insert extends Operator {
             throw new IllegalArgumentException("Must call from(Class clazz) to set the Class");
         if (this.model == null)
             throw new IllegalArgumentException("Must call with(Model model) to set the Model");
+        if (targetColumns != null) {
+            List<String> columns = Arrays.asList(targetColumns);
+            if (columns.contains("_id")) {
+                columns.remove("_id");
+                targetColumns = (String[]) columns.toArray();
+            }
+        }
         long _id = injector.save(this);
         model._id = _id;
         return _id;
@@ -36,15 +49,15 @@ public class Insert extends Operator {
 
     @Override
     public String toSql(ContentValues values) {
+
         StringBuilder sql = new StringBuilder();
         sql.append("INSERT");
         sql.append(" INTO ");
         sql.append(getTableName());
         sql.append('(');
 
-        Object[] bindArgs = null;
-        int size = (values != null && values.size() > 0)
-                ? values.size() : 0;
+        Object[] bindArgs;
+        int size = (values.size() > 0) ? values.size() : 0;
         if (size > 0) {
             bindArgs = new Object[size];
             int i = 0;
@@ -59,10 +72,13 @@ public class Insert extends Operator {
                 sql.append((i > 0) ? ",?" : "?");
             }
         } else {
-            throw new IllegalArgumentException("");
+            throw new IllegalArgumentException("No columns");
         }
         sql.append(')');
+        String sqlStr = sql.toString();
         mArguments = Arrays.asList(bindArgs);
-        return sql.toString();
+        if (AutoDaoLog.isDebug())
+            AutoDaoLog.d(sqlStr);
+        return sqlStr;
     }
 }

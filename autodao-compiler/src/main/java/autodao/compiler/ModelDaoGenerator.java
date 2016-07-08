@@ -10,6 +10,7 @@ import com.squareup.javapoet.TypeVariableName;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -181,12 +182,14 @@ public class ModelDaoGenerator extends ClazzGenerator {
                 .addParameter(operatorClass, "operator");
         String objNameList = objName + "List";
         if (isCreateSelectMethod)
-            selectBuilder.addStatement("$T<$T> $L = null", List.class, model, objNameList);
+            selectBuilder.addStatement("$T<$T> $L = $T.EMPTY_LIST", List.class, model, objNameList, Collections.class);
         selectBuilder.addStatement("$T cursor = null", cursor);
         selectBuilder.beginControlFlow("try");
         //---------- try block start ---------------------
         // db
         selectBuilder.addStatement("cursor = db.rawQuery(operator.toSql(), operator.getArgments())");
+
+        selectBuilder.beginControlFlow("if(cursor.getCount()>0)");
 
         if (isCreateSelectMethod)
             selectBuilder.addStatement("$L = new $T<>(cursor.getCount())",
@@ -312,6 +315,8 @@ public class ModelDaoGenerator extends ClazzGenerator {
         else
             selectBuilder.addStatement("return (M)$L", objName);
         selectBuilder.endControlFlow();
+        selectBuilder.endControlFlow();
+
         //---------- try block end ---------------------
         selectBuilder.endControlFlow();
         selectBuilder.beginControlFlow("catch($T e)", RuntimeException.class);
@@ -362,8 +367,16 @@ public class ModelDaoGenerator extends ClazzGenerator {
                 .addParameter(operatorClass, "operator");
 
         updateBuilder.addStatement("$T $L = ($T)(operator.getModel())", model, objName, model);
-        updateBuilder.addStatement("$T cv = new $T()", contentValues, contentValues);
+
         updateBuilder.addStatement("$T[] targetColumns = operator.getTargetColumns()", String.class);
+        updateBuilder.addStatement("$T cv = null", contentValues);
+        updateBuilder.beginControlFlow("if(targetColumns != null)");
+        updateBuilder.addStatement("cv = new $T(targetColumns.length)", contentValues);
+        updateBuilder.endControlFlow();
+        updateBuilder.beginControlFlow("else");
+        updateBuilder.addStatement("cv = new $T($L)", contentValues, clazzElement.getFieldElements().size()-1);
+        updateBuilder.endControlFlow();
+
         generateContentValues(clazzElement, objName, updateBuilder, true);
 
         updateBuilder.addStatement("db.acquireReference()");
@@ -400,24 +413,38 @@ public class ModelDaoGenerator extends ClazzGenerator {
         ClassName operatorClass = ClassName.get("autodao", "Operator");
 
         // update method
-        MethodSpec.Builder updateBuilder = MethodSpec.methodBuilder("save")
+        MethodSpec.Builder saveBuilder = MethodSpec.methodBuilder("save")
                 .addModifiers(Modifier.PUBLIC)
                 .returns(long.class)
                 .addParameter(operatorClass, "operator");
 
-        updateBuilder.addStatement("$T $L = ($T)(operator.getModel())", model, objName, model);
-        updateBuilder.addStatement("$T cv = new $T()", contentValues, contentValues);
-        updateBuilder.addStatement("$T[] targetColumns = operator.getTargetColumns()", String.class);
-        generateContentValues(clazzElement, objName, updateBuilder, true);
+        saveBuilder.addStatement("$T $L = ($T)(operator.getModel())", model, objName, model);
 
-        updateBuilder.addStatement("db.acquireReference()");
-        updateBuilder
+        saveBuilder.addStatement("$T[] targetColumns = operator.getTargetColumns()", String.class);
+        saveBuilder.addStatement("$T cv = null", contentValues);
+        saveBuilder.beginControlFlow("if(targetColumns != null)");
+        saveBuilder.addStatement("cv = new $T(targetColumns.length)", contentValues);
+        saveBuilder.endControlFlow();
+        saveBuilder.beginControlFlow("else");
+        saveBuilder.addStatement("cv = new $T($L)", contentValues, clazzElement.getFieldElements().size()-1);
+        saveBuilder.endControlFlow();
+
+        generateContentValues(clazzElement, objName, saveBuilder, true);
+
+        ClassName logClass = ClassName.get("autodao", "AutoDaoLog");
+        saveBuilder.addStatement("db.acquireReference()");
+        saveBuilder
                 .beginControlFlow("try")
                 .addStatement("$T compileSql = operator.toSql(cv)", String.class)
                 .addStatement("$T statement = injector.getStatement(compileSql)", statementClass)
                 .beginControlFlow("if (statement == null) ")
                 .addStatement("statement = db.compileStatement(compileSql)", statementClass)
                 .addStatement("injector.putStatement(compileSql, statement)", statementClass)
+                .endControlFlow()
+                .beginControlFlow("else")
+                .beginControlFlow("if($T.isDebug())", logClass)
+                .addStatement("$T.d($S + compileSql)", logClass, "Hit SQLiteStatement for key: ")
+                .endControlFlow()
                 .endControlFlow()
                 .addStatement("statement.clearBindings()")
                 .addStatement("operator.bindStatement(statement)")
@@ -432,7 +459,7 @@ public class ModelDaoGenerator extends ClazzGenerator {
                 .addStatement("db.releaseReference()")
                 .endControlFlow();
 
-        return updateBuilder;
+        return saveBuilder;
     }
 
     private void generateContentValues(ClazzElement clazzElement,
@@ -509,14 +536,19 @@ public class ModelDaoGenerator extends ClazzGenerator {
                         , serializerCanonicalName
                         , serializerCanonicalName);
                 saveBuilder.beginControlFlow("if(serializer == null)")
-                        .addStatement("throw new $T($S)", IllegalArgumentException.class, "Can't find " + serializerCanonicalName + " serializer")
+                        .addStatement("throw new $T($S)", IllegalArgumentException.class,
+                                "Can't find " + serializerCanonicalName + " serializer")
                         .endControlFlow();
                 saveBuilder.addStatement("$T serializedValue = serializer.serialize($L.$L)"
                         , Object.class
                         , objName
-                        , fieldElement.getModifiers().contains(Modifier.PUBLIC) ? fieldElement.getName() : buildAccessorName("boolean".endsWith(columnType) ? "is" : "get", fieldElement.getName()) + "()");
+                        , fieldElement.getModifiers().contains(Modifier.PUBLIC)
+                                ? fieldElement.getName() : buildAccessorName("boolean".endsWith(columnType)
+                                ? "is" : "get", fieldElement.getName()) + "()");
                 saveBuilder.beginControlFlow("if(serializedValue != null)")
-                        .addStatement("cv.put($S, ($L)serializedValue)", fieldElement.getColumnName(), serializedTypeCanonicalName)
+                        .addStatement("cv.put($S, ($L)serializedValue)",
+                                fieldElement.getColumnName(),
+                                serializedTypeCanonicalName)
                         .endControlFlow();
             } else if (columnType.startsWith("java.util.List")
                     || columnType.startsWith("java.util.ArrayList")) {
