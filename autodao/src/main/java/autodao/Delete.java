@@ -26,6 +26,26 @@ public class Delete extends Operator {
         return this;
     }
 
+    public Delete and(String clause) {
+        andArg(clause);
+        return this;
+    }
+
+    public Delete and(String clause, Object... args) {
+        andArg(clause, args);
+        return this;
+    }
+
+    public Delete or(String clause) {
+        orArg(clause);
+        return this;
+    }
+
+    public Delete or(String clause, Object... args) {
+        orArg(clause, args);
+        return this;
+    }
+
     public int delete() {
         if (this.clazz == null)
             throw new IllegalArgumentException("Must call from(Class clazz) to set the Class");

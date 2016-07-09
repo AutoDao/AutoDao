@@ -17,26 +17,10 @@ public class Address extends Model{
         this.userId = userId;
     }
 
-    private String name;
+    public String name;
 
 //    @ForeignKey(referenceTableName = "user", referenceColumnName = "idCard", action = "ON UPDATE CASCADE")
-    private long userId;
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setUserId(long userId) {
-        this.userId = userId;
-    }
-
-    public long getUserId() {
-        return userId;
-    }
+    public long userId;
 
     @Override
     public String toString() {

@@ -42,13 +42,13 @@ public class MainActivity extends AppCompatActivity {
         Injector injector = helper.getInjector(db);
 
         User user = new User();
-        user.setName("tubb");
-        user.setIdCard(1111);
-        user.setVision(5.0f);
-        user.setRegistTime(System.currentTimeMillis());
-        user.setLogined(true);
+        user.name = "tubb";
+        user.idCard = 1111;
+        user.vision = 5.0f;
+        user.registTime = System.currentTimeMillis();
+        user.logined = true;
         byte[] avatar = "哈哈".getBytes();
-        user.setAvatar(avatar);
+        user.avatar = avatar;
         user.createTime = new Date(System.currentTimeMillis());
 
         List<Address> addresses = new ArrayList<>();
@@ -71,8 +71,8 @@ public class MainActivity extends AppCompatActivity {
 
 //        AutoDaoLog.d("take:"+take);
 
-        user.setPhoto(photo);
-        user.setAddresses(addresses);
+        user.photo = photo;
+        user.addresses = addresses;
         new Insert(injector).from(User.class).with(user).insert();
 
         for (Address address : addresses)
@@ -81,10 +81,10 @@ public class MainActivity extends AppCompatActivity {
         photo.desc = "最后的早餐";
 //        new Update(injector).from(Photo.class).where(PhotoContract.DESC_COLUMN+"=?", "最后的晚餐").with(photo).update();
 
-        user.setName("涂冰冰");
-        user.setVision(70.9f);
-        user.setLogined(false);
-        user.setIdCard(19120);
+        user.name = "涂冰冰";
+        user.vision = 70.9f;
+        user.logined = false;
+        user.idCard = 19120;
         user.createTime = new Date(System.currentTimeMillis());
 
 //        new Update(injector, UserContract.USERNAME_COLUMN, UserContract.VISION_COLUMN, UserContract.IDCARD_COLUMN, UserContract.CREATETIME_COLUMN)
@@ -95,7 +95,8 @@ public class MainActivity extends AppCompatActivity {
 
         List<User> users = new Select(injector)
                 .from(User.class)
-                .where(UserContract.USERNAME_COLUMN + "=?", "tu2bb")
+//                .where(UserContract.USERNAME_COLUMN + "=?", "tubb")
+                .or(UserContract.IDCARD_COLUMN+"=?", 19120)
                 .select();
 
         User userObj = new Select(injector, UserContract._ID_COLUMN, UserContract.USERNAME_COLUMN, UserContract.IDCARD_COLUMN)
@@ -144,7 +145,6 @@ public class MainActivity extends AppCompatActivity {
         photo2.desc = "最后的哈哈";
         new Update(injectorS, PhotoContract.DESC_COLUMN).from(Photo.class).where(PhotoContract.DESC_COLUMN + "=?", "最后的xx").with(photo2).update();
         dbS.close();
-//        Collections.EMPTY_LIST;
     }
 
     class UserAddress {

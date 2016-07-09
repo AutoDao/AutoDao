@@ -56,6 +56,26 @@ public class JoinSelect extends Operator{
         return this;
     }
 
+    public JoinSelect and(String clause) {
+        andArg(clause);
+        return this;
+    }
+
+    public JoinSelect and(String clause, Object... args) {
+        andArg(clause, args);
+        return this;
+    }
+
+    public JoinSelect or(String clause) {
+        orArg(clause);
+        return this;
+    }
+
+    public JoinSelect or(String clause, Object... args) {
+        orArg(clause, args);
+        return this;
+    }
+
     public JoinSelect distinct() {
         distinct = true;
         return this;
@@ -139,6 +159,8 @@ public class JoinSelect extends Operator{
     }
 
     public Cursor select(){
+        if (this.clazz == null)
+            throw new IllegalArgumentException("Must call from(Class clazz) to set the Class");
         return injector.joinSelect(this);
     }
 

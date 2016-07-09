@@ -40,6 +40,26 @@ public class Select extends Operator {
         return this;
     }
 
+    public Select and(String clause) {
+        andArg(clause);
+        return this;
+    }
+
+    public Select and(String clause, Object... args) {
+        andArg(clause, args);
+        return this;
+    }
+
+    public Select or(String clause) {
+        orArg(clause);
+        return this;
+    }
+
+    public Select or(String clause, Object... args) {
+        orArg(clause, args);
+        return this;
+    }
+
     public Select distinct() {
         distinct = true;
         return this;

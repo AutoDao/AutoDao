@@ -1,12 +1,9 @@
 package autodao;
 
 import android.content.ContentValues;
-import android.database.Cursor;
-import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteStatement;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -38,15 +35,38 @@ public abstract class Operator {
     }
 
     void whereArg(String clause) {
-        // Chain conditions if a previous condition exists.
         if (mWhere.length() > 0) {
-            mWhere.append(" AND ");
+            throw new IllegalArgumentException("You should use and()/or() after where()");
         }
         mWhere.append(clause);
     }
 
     void whereArg(String clause, Object... args) {
         whereArg(clause);
+        addArguments(args);
+    }
+
+    void andArg(String clause) {
+        if (mWhere.length() <= 0) {
+            throw new IllegalArgumentException("You should use where() first");
+        }
+        mWhere.append(" AND ").append(clause);
+    }
+
+    void andArg(String clause, Object... args) {
+        andArg(clause);
+        addArguments(args);
+    }
+
+    void orArg(String clause) {
+        if (mWhere.length() <= 0) {
+            throw new IllegalArgumentException("You should use where() first");
+        }
+        mWhere.append(" OR ").append(clause);
+    }
+
+    void orArg(String clause, Object... args) {
+        orArg(clause);
         addArguments(args);
     }
 

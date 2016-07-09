@@ -36,6 +36,26 @@ public class Update extends Operator {
         return this;
     }
 
+    public Update and(String clause) {
+        andArg(clause);
+        return this;
+    }
+
+    public Update and(String clause, Object... args) {
+        andArg(clause, args);
+        return this;
+    }
+
+    public Update or(String clause) {
+        orArg(clause);
+        return this;
+    }
+
+    public Update or(String clause, Object... args) {
+        orArg(clause, args);
+        return this;
+    }
+
     public Update with(Model model) {
         this.model = model;
         return this;

@@ -14,5 +14,4 @@ public interface ModelDao {
     <M extends Model> List<M> select(Operator operator);
     <M extends Model> M selectSingle(Operator operator);
     Cursor joinSelect(Operator operator);
-
 }
