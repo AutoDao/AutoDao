@@ -95,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
 
         List<User> users = new Select(injector)
                 .from(User.class)
-//                .where(UserContract.USERNAME_COLUMN + "=?", "tubb")
+                .where(UserContract.USERNAME_COLUMN + "=?", "tubb")
                 .or(UserContract.IDCARD_COLUMN+"=?", 19120)
                 .select();
 
