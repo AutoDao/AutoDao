@@ -74,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
         user.photo = photo;
         user.addresses = addresses;
         new Insert(injector).from(User.class).with(user).insert();
+        new Delete(injector).from(User.class).where(UserContract.USERNAME_COLUMN+"=?", "xx").delete();
 
         for (Address address : addresses)
             new Insert(injector).from(Address.class).with(address).insert();

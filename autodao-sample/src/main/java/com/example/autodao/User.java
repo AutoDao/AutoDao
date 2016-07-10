@@ -41,17 +41,4 @@ public class User extends Model{
     )
     public Date createTime;
 
-    @Override
-    public String toString() {
-        return "User{" +
-                "addresses=" + addresses +
-                ", name='" + name + '\'' +
-                ", idCard=" + idCard +
-                ", vision=" + vision +
-                ", registTime=" + registTime +
-                ", logined=" + logined +
-                ", avatar=" + Arrays.toString(avatar) +
-                ", photo=" + photo +
-                '}';
-    }
 }
