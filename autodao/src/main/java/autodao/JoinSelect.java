@@ -168,7 +168,11 @@ public class JoinSelect extends Operator{
         if (cursorHandler == null)
             throw new IllegalArgumentException("CursorHandler can't be NULL");
         Cursor cursor = select();
-        return cursorHandler.onHandle(cursor);
+        try {
+            return cursorHandler.onHandle(cursor);
+        } finally {
+            cursor.close();
+        }
     }
 
     @Override
@@ -203,12 +207,21 @@ public class JoinSelect extends Operator{
         }
 
         String joinType = getJoinTypeStr();
-        query.append(" ").append(joinType);
-        query.append(" ").append(getJoinTableName());
+        if (!TextUtils.isEmpty(joinType)) {
+            query.append(" ").append(joinType);
+        }
+        if (joinTable != null) {
+            String joinTableName = getJoinTableName();
+            if (!TextUtils.isEmpty(joinTableName)) {
+                query.append(" ").append(getJoinTableName());
+            }
+        }
         if (!TextUtils.isEmpty(joinTableAlias)) {
             query.append(" ").append(joinTableAlias);
         }
-        query.append(" ON ").append(on);
+        if (!TextUtils.isEmpty(on)) {
+            query.append(" ON ").append(on);
+        }
 
         appendClause(query, " WHERE ", mWhere.toString());
         appendClause(query, " GROUP BY ", groupBy);
@@ -242,7 +255,7 @@ public class JoinSelect extends Operator{
                 type = "CROSS JOIN";
                 break;
             default:
-                type = "INNER JOIN";
+                type = "";
                 break;
         }
         return type;

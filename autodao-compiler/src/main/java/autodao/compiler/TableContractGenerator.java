@@ -175,9 +175,15 @@ public class TableContractGenerator extends ClazzGenerator {
                 .addModifiers(Modifier.PUBLIC).addModifiers(Modifier.STATIC)
                 .returns(void.class)
                 .addParameter(ClassName.get("android.database.sqlite", "SQLiteDatabase"), "db");
+        String dropTableSql = "DROP TABLE IF EXISTS " + clazzElement.getTableName();
+        ClassName log = ClassName.get("autodao", "AutoDaoLog");
+        dropTableBuilder
+                .beginControlFlow("if($T.isDebug())", log)
+                .addStatement("$T.d($S)", log, dropTableSql)
+                .endControlFlow();
         dropTableBuilder.addStatement(
                 "db.execSQL($S)",
-                "DROP TABLE IF EXISTS " + clazzElement.getTableName());
+                dropTableSql);
         return dropTableBuilder.build();
     }
 
@@ -189,10 +195,16 @@ public class TableContractGenerator extends ClazzGenerator {
                 .addParameter(ClassName.get("android.database.sqlite", "SQLiteDatabase"), "db");
         ClassName contract = ClassName.get(clazzElement.getPackageName(),
                 clazzElement.getName() + TABLE_CONTRACT_SUFFIX);
+        String createTableSqlField = getCreateTableContractName();
+        ClassName log = ClassName.get("autodao", "AutoDaoLog");
+        createTableBuilder
+                .beginControlFlow("if($T.isDebug())", log)
+                .addStatement("$T.d($T.$L)", log, contract, createTableSqlField)
+                .endControlFlow();
         createTableBuilder.addStatement(
                 "db.execSQL($T.$L)",
                 contract,
-                getCreateTableContractName());
+                createTableSqlField);
         return createTableBuilder.build();
     }
 
@@ -206,10 +218,16 @@ public class TableContractGenerator extends ClazzGenerator {
             for (ClazzElement.Index index : clazzElement.getIndices()) {
                 ClassName indexClassName = ClassName.get(clazzElement.getPackageName(),
                         clazzElement.getName() + TABLE_CONTRACT_SUFFIX);
+                String createIndexSqlField = getIndexFieldName(index.getName());
+                ClassName log = ClassName.get("autodao", "AutoDaoLog");
+                createIndexBuilder
+                        .beginControlFlow("if($T.isDebug())", log)
+                        .addStatement("$T.d($T.$L)", log, indexClassName, createIndexSqlField)
+                        .endControlFlow();
                 createIndexBuilder.addStatement(
                         "db.execSQL($T.$L)",
                         indexClassName,
-                        getIndexFieldName(index.getName()));
+                        createIndexSqlField);
             }
         }
         return createIndexBuilder.build();

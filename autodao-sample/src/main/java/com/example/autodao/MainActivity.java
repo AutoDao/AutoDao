@@ -123,7 +123,6 @@ public class MainActivity extends AppCompatActivity {
                             userAddress.addressName = addressName;
                             userAddresses.add(userAddress);
                         }
-                        cursor.close();
                         return userAddresses;
                     }
                 });
@@ -146,6 +145,7 @@ public class MainActivity extends AppCompatActivity {
         photo2.desc = "最后的哈哈";
         new Update(injectorS, PhotoContract.DESC_COLUMN).from(Photo.class).where(PhotoContract.DESC_COLUMN + "=?", "最后的xx").with(photo2).update();
         dbS.close();
+
     }
 
     class UserAddress {
