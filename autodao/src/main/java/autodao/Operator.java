@@ -24,6 +24,8 @@ public abstract class Operator {
     String[] targetColumns;
     Model model;
 
+    String modelCanonicalName;
+
     public Operator(Injector injector) {
         if (injector == null) throw new IllegalArgumentException("Injector can't be NULL");
         this.injector = injector;
@@ -32,6 +34,7 @@ public abstract class Operator {
 
     void fromArg(Class<? extends Model> clazz) {
         this.clazz = clazz;
+        modelCanonicalName = clazz.getCanonicalName();
     }
 
     void whereArg(String clause) {
@@ -96,15 +99,15 @@ public abstract class Operator {
         return model;
     }
 
-    public String getTableName(){
+    public String getTableName() {
         return injector.getTableName(getModelCanonicalName());
     }
 
-    public String getModelCanonicalName(){
-        return clazz.getCanonicalName();
+    public String getModelCanonicalName() {
+        return modelCanonicalName;
     }
 
-    public void bindStatement(SQLiteStatement statement){
+    public void bindStatement(SQLiteStatement statement) {
 
         for (int index = 0, len = mArguments.size(); index < len; index++) {
             Object arg = mArguments.get(index);
@@ -113,20 +116,20 @@ public abstract class Operator {
                     statement.bindNull(index + 1);
                     break;
                 case FIELD_TYPE_INTEGER:
-                    statement.bindLong(index + 1, ((Number)arg).longValue());
+                    statement.bindLong(index + 1, ((Number) arg).longValue());
                     break;
                 case FIELD_TYPE_FLOAT:
-                    statement.bindDouble(index + 1, ((Number)arg).doubleValue());
+                    statement.bindDouble(index + 1, ((Number) arg).doubleValue());
                     break;
                 case FIELD_TYPE_BLOB:
-                    statement.bindBlob(index + 1, (byte[])arg);
+                    statement.bindBlob(index + 1, (byte[]) arg);
                     break;
                 case FIELD_TYPE_STRING:
                 default:
                     if (arg instanceof Boolean) {
                         // Provide compatibility with legacy applications which may pass
                         // Boolean values in bind args.
-                        statement.bindLong(index + 1, ((Boolean)arg).booleanValue() ? 1 : 0);
+                        statement.bindLong(index + 1, ((Boolean) arg).booleanValue() ? 1 : 0);
                     } else {
                         statement.bindString(index + 1, arg.toString());
                     }
@@ -150,11 +153,11 @@ public abstract class Operator {
         }
     }
 
-    public String toSql(){
+    public String toSql() {
         throw new RuntimeException("Invalid");
     }
 
-    public String toSql(ContentValues values){
+    public String toSql(ContentValues values) {
         throw new RuntimeException("Invalid");
     }
 }

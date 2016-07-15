@@ -15,9 +15,18 @@ public class Insert extends Operator {
         super(injector);
     }
 
-    public Insert(Injector injector, String...columns) {
+    public Insert(Injector injector, String... columns) {
         super(injector);
         targetColumns = columns;
+
+        if (targetColumns != null) {
+            List<String> columnList = Arrays.asList(targetColumns);
+            if (columnList.contains("_id")) {
+                columnList.remove("_id");
+                targetColumns = (String[]) columnList.toArray();
+            }
+        }
+
     }
 
     public Insert from(Class<? extends Model> clazz) {
@@ -35,13 +44,7 @@ public class Insert extends Operator {
             throw new IllegalArgumentException("Must call from(Class clazz) to set the Class");
         if (this.model == null)
             throw new IllegalArgumentException("Must call with(Model model) to set the Model");
-        if (targetColumns != null) {
-            List<String> columns = Arrays.asList(targetColumns);
-            if (columns.contains("_id")) {
-                columns.remove("_id");
-                targetColumns = (String[]) columns.toArray();
-            }
-        }
+
         long _id = injector.save(this);
         model._id = _id;
         return _id;

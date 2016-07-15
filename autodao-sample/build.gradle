@@ -16,6 +16,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName '1.0.0'
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
 
     lintOptions {
@@ -38,6 +39,12 @@ dependencies {
     testCompile deps.junit
     testCompile deps.truth
     testCompile deps.robolectric
+
+    androidTestCompile deps.junit
+    androidTestCompile 'com.android.support:support-annotations:23.3.0'
+    androidTestCompile 'com.android.support.test:runner:0.4.1'
+    androidTestCompile 'com.android.support.test:rules:0.4.1'
+    androidTestApt project(':autodao-compiler')
 }
 
 afterEvaluate {
