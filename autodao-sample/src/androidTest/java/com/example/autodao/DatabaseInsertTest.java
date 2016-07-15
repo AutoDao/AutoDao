@@ -51,18 +51,18 @@ public class DatabaseInsertTest {
         TestTimeUtils.start(TAG, "testAutoDAOTransactionInsert");
         db.beginTransaction();
         Injector injector = helper.getInjector(db);
-        Insert from = new Insert(injector).from(Address.class);
-        Address address = new Address();
+        Insert from = new Insert(injector).from(TestUser.class);
+        TestUser user = new TestUser();
         for (int i = 0; i < TEST_COUNT; i++) {
-            address.name = "xxx" + i;
-            address.userId = i;
-            from.with(address).insert();
+            user.name = "xxx" + i;
+            user.age = i;
+            from.with(user).insert();
         }
         db.setTransactionSuccessful();
         db.endTransaction();
         TestTimeUtils.stop();
         // test insert count
-        long count = new Select(injector).from(Address.class).select().size();
+        long count = new Select(injector).from(TestUser.class).select().size();
         Assert.assertEquals(TEST_COUNT, count);
     }
 
@@ -130,6 +130,25 @@ public class DatabaseInsertTest {
         Assert.assertEquals(1, select.size());
         TestUser u = (TestUser) select.get(0);
         Assert.assertEquals(user.name, u.name);
+        Assert.assertEquals(user.age, u.age);
+    }
+
+    @Test
+    public void testColumnInsert(){
+        // insert item
+        SQLiteDatabase db = helper.getWritableDatabase();
+        Injector injector = helper.getInjector(db);
+        TestTimeUtils.start(TAG, "testAutoDAOSingleInsert");
+        TestUser user = new TestUser();
+        user.name = "bill";
+        user.age = 100;
+        new Insert(injector,TestUserContract.AGE_COLUMN).from(TestUser.class).with(user).insert();
+        TestTimeUtils.stop();
+
+        List<Model> select = new Select(injector).from(TestUser.class).select();
+        Assert.assertEquals(1, select.size());
+        TestUser u = (TestUser) select.get(0);
+        Assert.assertNotSame(user.name, u.name);
         Assert.assertEquals(user.age, u.age);
     }
 
