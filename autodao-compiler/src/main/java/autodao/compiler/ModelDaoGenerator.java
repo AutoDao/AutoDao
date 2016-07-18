@@ -3,18 +3,26 @@ package autodao.compiler;
 import android.support.annotation.NonNull;
 
 import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
+import com.squareup.javapoet.ParameterizedTypeName;
+import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 import com.squareup.javapoet.TypeVariableName;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.lang.model.element.Modifier;
+import javax.lang.model.util.ElementFilter;
 
 /**
  * Created by tubingbing on 16/6/18.
@@ -94,12 +102,22 @@ public class ModelDaoGenerator extends ClazzGenerator {
         ClassName injectorClass = ClassName.get("autodao", "Injector");
         typeSpecBuilder.addField(sqlite, "db", Modifier.PRIVATE);
         typeSpecBuilder.addField(injectorClass, "injector", Modifier.PRIVATE);
+        typeSpecBuilder.addField(contentValues, "cv", Modifier.PRIVATE);
+
+        ClassName string = ClassName.get(String.class);
+        ClassName lruCache = ClassName.get("android.support.v4.util", "LruCache");
+        ClassName statement = ClassName.get("android.database.sqlite", "SQLiteStatement");
+        TypeName lruCacheOfStatement = ParameterizedTypeName.get(lruCache, string, statement);
+        FieldSpec statementFieldSpec = generateStatementMapField(lruCacheOfStatement, statement);
+
+        typeSpecBuilder.addField(statementFieldSpec);
         MethodSpec flux = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(sqlite, "db")
                 .addParameter(injectorClass, "injector")
                 .addStatement("this.$N = $N", "db", "db")
                 .addStatement("this.$N = $N", "injector", "injector")
+                .addStatement("this.cv = new $T()", contentValues)
                 .build();
         typeSpecBuilder.addMethod(flux);
         typeSpecBuilder.addMethod(generateSqlSaveMethod(clazzElement, objName, model, contentValues).build());
@@ -374,7 +392,7 @@ public class ModelDaoGenerator extends ClazzGenerator {
         updateBuilder.addStatement("cv = new $T(targetColumns.length)", contentValues);
         updateBuilder.endControlFlow();
         updateBuilder.beginControlFlow("else");
-        updateBuilder.addStatement("cv = new $T($L)", contentValues, clazzElement.getFieldElements().size()-1);
+        updateBuilder.addStatement("cv = new $T($L)", contentValues, clazzElement.getFieldElements().size() - 1);
         updateBuilder.endControlFlow();
 
         generateContentValues(clazzElement, objName, updateBuilder, true);
@@ -412,7 +430,7 @@ public class ModelDaoGenerator extends ClazzGenerator {
         ClassName statementClass = ClassName.get("android.database.sqlite", "SQLiteStatement");
         ClassName operatorClass = ClassName.get("autodao", "Operator");
 
-        // update method
+        // save method
         MethodSpec.Builder saveBuilder = MethodSpec.methodBuilder("save")
                 .addModifiers(Modifier.PUBLIC)
                 .returns(long.class)
@@ -421,30 +439,37 @@ public class ModelDaoGenerator extends ClazzGenerator {
         saveBuilder.addStatement("$T $L = ($T)(operator.getModel())", model, objName, model);
 
         saveBuilder.addStatement("$T[] targetColumns = operator.getTargetColumns()", String.class);
-        saveBuilder.addStatement("$T cv = null", contentValues);
-        saveBuilder.beginControlFlow("if(targetColumns != null)");
-        saveBuilder.addStatement("cv = new $T(targetColumns.length)", contentValues);
-        saveBuilder.endControlFlow();
-        saveBuilder.beginControlFlow("else");
-        saveBuilder.addStatement("cv = new $T($L)", contentValues, clazzElement.getFieldElements().size()-1);
-        saveBuilder.endControlFlow();
+
+//        saveBuilder.addStatement("$T cv = null", contentValues);
+//        saveBuilder.beginControlFlow("if(targetColumns != null)");
+//        saveBuilder.addStatement("cv = new $T(targetColumns.length)", contentValues);
+//        saveBuilder.endControlFlow();
+//        saveBuilder.beginControlFlow("else");
+//        saveBuilder.addStatement("cv = new $T($L)", contentValues, clazzElement.getFieldElements().size() - 1);
+//        saveBuilder.endControlFlow();
 
         generateContentValues(clazzElement, objName, saveBuilder, true);
 
         ClassName logClass = ClassName.get("autodao", "AutoDaoLog");
-        saveBuilder.addStatement("db.acquireReference()");
+//        saveBuilder.addStatement("db.acquireReference()");
         saveBuilder
                 .beginControlFlow("try")
-                .addStatement("$T compileSql = operator.toSql(cv)", String.class)
-                .addStatement("$T statement = injector.getStatement(compileSql)", statementClass)
-                .beginControlFlow("if (statement == null) ")
-                .addStatement("statement = db.compileStatement(compileSql)", statementClass)
-                .addStatement("injector.putStatement(compileSql, statement)", statementClass)
+                .addStatement("String cvFlag = new String()")
+                .beginControlFlow("for (String key :  cv.keySet())")
+                .addStatement("cvFlag += key + \"+\"")
                 .endControlFlow()
-                .beginControlFlow("else")
+                .addStatement("$T statement = insertStatementCache.get(cvFlag)", statementClass)
+                .beginControlFlow("if (statement == null)")
+                .addStatement("statement = db.compileStatement(operator.toSql(cv))")
+                .addStatement("insertStatementCache.put(cvFlag, statement)")
+                .endControlFlow()
+//                .addStatement("$T statement = injector.getStatement(compileSql)", statementClass)
+//                .beginControlFlow("if (statement == null) ")
+//                .addStatement("injector.putStatement(compileSql, statement)", statementClass)
+//                .endControlFlow()
+//                .beginControlFlow("else")
                 .beginControlFlow("if($T.isDebug())", logClass)
-                .addStatement("$T.d($S + compileSql)", logClass, "Hit SQLiteStatement for key: ")
-                .endControlFlow()
+                .addStatement("$T.d($S + cvFlag)", logClass, "Hit SQLiteStatement for key: ")
                 .endControlFlow()
                 .addStatement("statement.clearBindings()")
                 .addStatement("operator.bindStatement(statement)")
@@ -456,8 +481,10 @@ public class ModelDaoGenerator extends ClazzGenerator {
                 .endControlFlow()
                 .endControlFlow()
                 .beginControlFlow("finally")
-                .addStatement("db.releaseReference()")
+//                .addStatement("db.releaseReference()")
+                .addStatement("cv.clear()")
                 .endControlFlow();
+
 
         return saveBuilder;
     }
@@ -603,6 +630,21 @@ public class ModelDaoGenerator extends ClazzGenerator {
                             : buildAccessorName("boolean".endsWith(columnType) ? "is" : "get",
                             fieldElement.getName()) + "()");
         }
+    }
+
+    @NonNull
+    private FieldSpec generateStatementMapField(TypeName lruCacheOfStatement, ClassName statement) {
+
+        return FieldSpec.builder(lruCacheOfStatement, "insertStatementCache")
+                .addModifiers(Modifier.PRIVATE)
+                .initializer("new $T(3){$L}", lruCacheOfStatement, "@Override\n" +
+                        "        protected void entryRemoved(boolean evicted, String key, SQLiteStatement oldValue, SQLiteStatement newValue) {\n" +
+                        "        super.entryRemoved(evicted, key, oldValue, newValue);\n" +
+                        "        if (evicted && oldValue != null) {\n" +
+                        "        oldValue.close();\n" +
+                        "        }\n" +
+                        "        }")
+                .build();
     }
 
 }

@@ -1,6 +1,7 @@
 package com.example.autodao;
 
 import android.app.Application;
+import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -134,7 +135,7 @@ public class DatabaseInsertTest {
     }
 
     @Test
-    public void testColumnInsert(){
+    public void testColumnInsert() {
         // insert item
         SQLiteDatabase db = helper.getWritableDatabase();
         Injector injector = helper.getInjector(db);
@@ -142,7 +143,7 @@ public class DatabaseInsertTest {
         TestUser user = new TestUser();
         user.name = "bill";
         user.age = 100;
-        new Insert(injector,TestUserContract.AGE_COLUMN).from(TestUser.class).with(user).insert();
+        new Insert(injector, TestUserContract.AGE_COLUMN).from(TestUser.class).with(user).insert();
         TestTimeUtils.stop();
 
         List<Model> select = new Select(injector).from(TestUser.class).select();
@@ -150,6 +151,52 @@ public class DatabaseInsertTest {
         TestUser u = (TestUser) select.get(0);
         Assert.assertNotSame(user.name, u.name);
         Assert.assertEquals(user.age, u.age);
+    }
+
+    @Test
+    public void testCVInsert() {
+        SQLiteDatabase db = helper.getWritableDatabase();
+        db.execSQL("CREATE TABLE IF NOT EXISTS TestUser(_id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,age INTEGER)");
+
+        TestTimeUtils.start(TAG, "testCVInsert");
+        ContentValues cv = new ContentValues();
+        cv.put("name", "bill");
+        cv.put("age", 101);
+        db.insert("TestUser", null, cv);
+        TestTimeUtils.stop();
+        SQLiteQueryBuilder queryBuilder = new SQLiteQueryBuilder();
+        queryBuilder.setTables("TestUser");
+        queryBuilder.appendWhere("name='bill'");
+        Cursor cursor = queryBuilder.query(db, null, null, null, null, null, null);
+        Assert.assertEquals(1, cursor.getCount());
+        if (cursor.moveToFirst()) {
+            Assert.assertEquals("bill", cursor.getString(1));
+            Assert.assertEquals(101, cursor.getInt(2));
+        }
+    }
+
+    @Test
+    public void testCVTransactionInsert() {
+        SQLiteDatabase db = helper.getWritableDatabase();
+        db.execSQL("CREATE TABLE IF NOT EXISTS TestUser(_id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,age INTEGER)");
+
+        TestTimeUtils.start(TAG, "testCVTransactionInsert");
+        ContentValues cv = new ContentValues();
+        db.beginTransaction();
+        for (int i = 0; i < TEST_COUNT; i++) {
+            cv.put("name", "bill");
+            cv.put("age", i);
+            db.insert("TestUser", null, cv);
+            cv.clear();
+        }
+        db.setTransactionSuccessful();
+        db.endTransaction();
+        TestTimeUtils.stop();
+
+        // test insert count
+        Cursor c = db.rawQuery("select * from TestUser", null);
+        long count = c.getCount();
+        Assert.assertEquals(TEST_COUNT, count);
     }
 
     @Before
